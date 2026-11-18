@@ -1,0 +1,1432 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Парусники — пробный спуск на воду</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Alegreya+SC:wght@700&family=Alegreya+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --ink:#F3EBDD; --muted:#A9B8C6; --brass:#E0A84A; --brass2:#F3C77A; --panel:rgba(11,26,39,.84); --line:#2C4A66; --warn:#F6B07E; --good:#7BC48C; --bad:#F08A4B; }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:#0B1A27;color:var(--ink);font-family:'Alegreya Sans',system-ui,sans-serif;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
+  canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
+  .hud{position:fixed;pointer-events:none}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:7px 10px}
+  .sc{font-family:'Alegreya SC',serif}
+  .muted{color:var(--muted)}
+  button{font-family:inherit;color:var(--ink);background:#16314A;border:1px solid var(--line);border-radius:10px;min-height:44px;padding:0 12px;font-size:15px;cursor:pointer;pointer-events:auto}
+  button:focus-visible{outline:2px solid var(--brass2);outline-offset:2px}
+  button.on{border-color:var(--brass);background:#23415C}
+  button.primary{background:var(--brass);color:#1A1206;border:0;font-weight:700}
+  button:disabled{opacity:.45;cursor:default}
+
+  #tl{left:8px;top:8px;width:200px;pointer-events:auto;text-align:left;display:block;min-height:0;padding:6px 9px;font-family:inherit;color:var(--ink);background:var(--panel);cursor:pointer}
+  #tl .big{font-size:24px;font-weight:700;line-height:1}
+  #tl .row{font-size:12.5px!important;line-height:1.35!important}
+  #ordTxt{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:182px}
+  #tl .row{display:flex;justify-content:space-between;gap:12px;font-size:13px;line-height:1.4}
+  .bars{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px;margin-top:4px}
+  .bar{display:flex;flex-direction:column;gap:2px;font-size:10px;color:var(--muted)}
+  .bar i{display:block;height:5px;border-radius:3px;background:#0F2233;overflow:hidden}
+  .bar i b{display:block;height:100%;width:100%;background:var(--good)}
+  #tr{right:10px;top:10px;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+  #tr .btns{display:flex;gap:6px;justify-content:flex-end;position:relative}
+  #tr .btns button{min-height:42px;padding:0 11px;font-size:14px}
+  #menu{position:absolute;right:0;top:48px;display:none;flex-direction:column;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:6px;z-index:3}
+  #menu button{min-width:130px}
+  #heelbox{display:flex;align-items:center;gap:8px}
+
+  #mid{position:fixed;left:50%;top:8px;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none;max-width:44vw}
+  #toast{font-size:14px;color:#1A1206;background:var(--brass2);border-radius:10px;padding:7px 12px;opacity:0;transition:opacity .25s;text-align:center}
+  #toast.warn{background:var(--warn)}
+  #tut{display:none;pointer-events:auto;max-width:420px;border-color:#9FD8EA;font-size:14px;line-height:1.35}
+  #tut .tt{display:flex;align-items:center;gap:8px;margin-bottom:3px}
+  #tut .tt b{color:#9FD8EA;font-size:12px}
+  #tut button{min-height:34px;font-size:13px;padding:0 10px;margin-left:auto}
+  #enemy{min-width:220px;display:none}
+  #enemy .t{display:flex;justify-content:space-between;gap:10px;font-size:13px}
+  #race{display:none;font-size:14px}
+
+  #rudder{position:fixed;left:12px;bottom:12px;width:230px;height:92px;pointer-events:auto;touch-action:none}
+  #rudder .track{position:absolute;inset:0;border-radius:14px;background:var(--panel);border:1px solid var(--line)}
+  #rudder .lbl{position:absolute;left:12px;top:6px;font-size:12px;color:var(--muted)}
+  #rudder .knob{position:absolute;top:26px;left:50%;width:54px;height:54px;margin-left:-27px;border-radius:50%;background:#5B3A22;border:3px solid var(--brass)}
+  #rudder .knob::before,#rudder .knob::after{content:"";position:absolute;left:50%;top:50%;background:var(--brass)}
+  #rudder .knob::before{width:4px;height:66px;margin:-33px 0 0 -2px}
+  #rudder .knob::after{width:66px;height:4px;margin:-2px 0 0 -33px}
+
+  #guns{position:fixed;left:50%;bottom:12px;transform:translateX(-50%);display:none;gap:6px;align-items:flex-end;pointer-events:auto}
+  #guns button{min-width:84px;min-height:56px;font-weight:700}
+  #guns .fire{border-color:#5B3A22}
+  #guns .ammo{min-width:96px;font-size:14px}
+
+  #right{position:fixed;right:12px;bottom:12px;display:flex;gap:8px;align-items:flex-end;pointer-events:auto}
+  #sailbox{width:84px;height:min(196px,44vh);display:flex;flex-direction:column;align-items:stretch;gap:6px}
+  #sail{position:relative;flex:1;border-radius:14px;background:var(--panel);border:1px solid var(--line);touch-action:none;cursor:ns-resize}
+  #sail .fill{position:absolute;left:6px;right:6px;bottom:6px;border-radius:9px;background:#E9DCC0}
+  #sail .val{position:absolute;left:0;right:0;top:6px;text-align:center;font-weight:700;font-size:14px;color:var(--ink);text-shadow:0 1px 2px #000}
+  #sail .ticks{position:absolute;inset:0}
+  #sail .ticks i{position:absolute;left:4px;right:4px;height:1px;background:rgba(15,34,51,.6)}
+  #extra{display:flex;flex-direction:column;gap:6px;width:112px}
+  #stam{height:8px;border-radius:4px;background:#0F2233;overflow:hidden;border:1px solid var(--line)}
+  #stam i{display:block;height:100%;width:100%;background:#5FA9C4}
+
+  .overlay{position:fixed;inset:0;display:flex;align-items:safe center;justify-content:center;background:rgba(8,18,28,.88);z-index:5;padding:16px;overflow:auto;touch-action:pan-y}
+  .overlay .wrap{max-width:960px;width:100%}
+  .overlay h1{margin:0 0 4px;font-size:26px;color:var(--brass)}
+  .overlay p{margin:0 0 12px;font-size:14px}
+  #cards{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+  .ship{background:#16314A;border:1px solid var(--line);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:6px}
+  .ship h2{margin:0;font-size:17px}
+  .ship ul{margin:0;padding-left:16px;font-size:12.5px;line-height:1.35;color:var(--muted)}
+  .ship .tag{font-size:12px;font-weight:700;align-self:flex-start;padding:2px 8px;border-radius:6px;color:#0F2233}
+  .help{margin-top:10px;font-size:12px;color:var(--muted)}
+  #over{display:none}
+  #bPort{display:none;pointer-events:auto;min-height:48px;font-weight:700;font-size:16px}
+  #port,#mapov{display:none}
+  #port .box,#mapov .box{max-width:900px;margin:0 auto;background:#12293D;border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+  #port .hdr{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  #port .hdr .sp{flex:1}
+  #port .tabs{display:flex;gap:6px;margin:8px 0}
+  #port table{width:100%;border-collapse:collapse;font-size:14px}
+  #port th{text-align:left;font-weight:500;color:var(--muted);font-size:12px;padding:4px 6px;border-bottom:1px solid var(--line)}
+  #port td{padding:4px 6px;border-bottom:1px solid #1E3A52}
+  #port td button{min-height:40px;min-width:44px;padding:0 8px}
+  #port .good{color:var(--good)} #port .bad{color:var(--bad)}
+  #port .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px}
+  #port .tile{background:#16314A;border:1px solid var(--line);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:6px;font-size:14px}
+  #mapcv{width:100%;height:auto;display:block;border-radius:10px;background:#1C5874}
+  .career{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:#16314A;border:1px solid var(--brass);border-radius:12px;padding:12px;margin-bottom:10px}
+  #over .box{max-width:420px;margin:0 auto;text-align:center;background:#16314A;border:1px solid var(--line);border-radius:14px;padding:18px}
+  #over .btnrow{display:flex;gap:8px;justify-content:center;margin-top:12px}
+  @media (orientation:portrait){
+    #right{flex-direction:column;align-items:flex-end;gap:6px}
+    #extra{width:118px}
+    #extra button{min-height:42px}
+    #sailbox{height:min(220px,28vh)}
+    #rudder{width:calc(100vw - 154px);max-width:300px}
+    #guns{left:12px;transform:none;bottom:116px}
+    #guns button{min-width:70px;min-height:52px;padding:0 8px;font-size:15px}
+    #guns .ammo{min-width:78px}
+    #mid{max-width:92vw;top:150px}
+  }
+  @media (max-width:900px){#cards{grid-template-columns:repeat(3,minmax(0,1fr))}}
+  @media (max-width:560px){#cards{grid-template-columns:1fr}}
+  @media (max-height:430px){.overlay h1{font-size:22px} .ship ul{font-size:12px}}
+</style>
+</head>
+<body>
+<canvas id="cv" aria-label="Море, вид сверху. Ваш корабль в центре экрана."></canvas>
+
+<button class="hud card" id="tl" aria-expanded="false" aria-label="Состояние корабля, нажмите для подробностей">
+  <div style="display:flex;align-items:baseline;gap:6px"><span class="big" id="spd">0,0</span><span class="muted">уз</span><span id="ftw" style="font-size:12px;font-weight:700;color:#9FD8EA"></span><span style="margin-left:auto;font-size:13px"><span class="muted">крен</span> <b id="heel">0°</b></span></div>
+  <div class="row"><span id="gold" style="color:var(--brass);font-weight:700">0</span><span class="muted" id="tlHint">▾</span></div>
+  <div class="row" id="ordRow" style="display:none"><span id="ordTxt"></span></div>
+  <div class="bars" aria-label="Состояние корабля">
+    <div class="bar">Корпус<i><b id="pbH"></b></i></div>
+    <div class="bar">Паруса<i><b id="pbS"></b></i></div>
+    <div class="bar">Команда<i><b id="pbC"></b></i></div>
+    <div class="bar">Вода<i><b id="pbW" style="background:#5FA9C4;width:0"></b></i></div>
+    <div class="bar">Огонь<i><b id="pbF" style="background:#F08A4B;width:0"></b></i></div>
+  </div>
+  <div id="tlMore" style="display:none;margin-top:4px">
+    <div class="sc" id="shipName" style="font-size:13px;color:var(--brass);text-align:left">—</div>
+    <div class="row"><span class="muted">Макс. корпуса</span><span id="vh"></span></div>
+    <div class="row"><span class="muted">Курс</span><span id="course">—</span></div>
+    <div class="row"><span class="muted">Снос · глубина</span><span id="depth">—</span></div>
+    <div class="row" id="heelbox"><span class="muted">Крен</span>
+      <svg width="54" height="29" viewBox="0 0 64 34" aria-hidden="true">
+        <path d="M4 30 A28 28 0 0 1 60 30" fill="none" stroke="#2C4A66" stroke-width="3"/>
+        <path id="heelDanger" d="" fill="none" stroke="#F08A4B" stroke-width="3"/>
+        <line id="heelNeedle" x1="32" y1="30" x2="32" y2="6" stroke="#E0A84A" stroke-width="3" stroke-linecap="round"/>
+        <circle cx="32" cy="30" r="3" fill="#E0A84A"/>
+      </svg>
+    </div>
+  </div>
+</button>
+
+<div class="hud" id="tr">
+  <div class="card" style="display:flex;align-items:center;gap:8px;padding:5px 9px">
+    <svg width="58" height="58" viewBox="-42 -42 84 84" role="img" aria-label="Роза ветров">
+      <circle r="38" fill="#0F2233" stroke="#2C4A66" stroke-width="2"/>
+      <text x="0" y="-27" text-anchor="middle" font-size="11" fill="#A9B8C6">С</text>
+      <text x="29" y="4" text-anchor="middle" font-size="11" fill="#A9B8C6">В</text>
+      <text x="0" y="35" text-anchor="middle" font-size="11" fill="#A9B8C6">Ю</text>
+      <text x="-29" y="4" text-anchor="middle" font-size="11" fill="#A9B8C6">З</text>
+      <g id="twArrow"><line x1="0" y1="-30" x2="0" y2="22" stroke="#5FA9C4" stroke-width="4"/><path d="M-8 12 L0 26 L8 12" fill="#5FA9C4"/></g>
+      <g id="shipMark"><path d="M0 -14 L6 8 L0 4 L-6 8 Z" fill="#E0A84A"/></g>
+    </svg>
+    <div style="display:flex;flex-direction:column;gap:2px;font-size:13px">
+      <span class="muted">Ветер</span>
+      <span id="windTxt" style="font-weight:700">4 балла</span>
+      <span class="muted" id="windMs"></span>
+    </div>
+  </div>
+  <div class="btns">
+    <button id="bMap">Карта</button>
+    <button id="bFight" class="primary">Бой</button>
+    <button id="bMenu" aria-label="Ещё" aria-expanded="false">⋯</button>
+    <div id="menu"><button id="bZoom">Масштаб</button><button id="bRace">Гонка</button><button id="bShip">Корабль</button><button id="bSound">Звук: вкл</button><button id="bTutAgain">Обучение</button></div>
+  </div>
+</div>
+
+<div id="mid">
+  <div class="card" id="enemy" aria-live="polite">
+    <div class="t"><span class="sc" id="eName" style="color:#F6B07E">—</span><span id="eDist" class="muted">—</span></div>
+    <div class="bars">
+      <div class="bar">Корпус<i><b id="ebH"></b></i></div>
+      <div class="bar">Паруса<i><b id="ebS"></b></i></div>
+      <div class="bar">Команда<i><b id="ebC"></b></i></div>
+      <div class="bar">Вода<i><b id="ebW" style="background:#5FA9C4;width:0"></b></i></div>
+      <div class="bar">Огонь<i><b id="ebF" style="background:#F08A4B;width:0"></b></i></div>
+    </div>
+  </div>
+  <div class="card" id="race"></div>
+  <button id="bPort" class="primary">В порт</button>
+  <div class="card" id="tut" role="status"><div class="tt"><b id="tutN">Обучение 1/6</b><button id="bTutSkip">Пропустить</button></div><div id="tutT"></div></div>
+  <div id="toast" role="status"></div>
+</div>
+
+<div id="rudder" role="slider" aria-label="Руль: тяните влево или вправо" aria-valuemin="-100" aria-valuemax="100" aria-valuenow="0" tabindex="0">
+  <div class="track"></div><div class="lbl">Руль · ← →</div><div class="knob" id="knob"></div>
+</div>
+
+<div id="guns">
+  <button class="fire" id="fireL" aria-label="Залп левым бортом">◀ Залп</button>
+  <button class="ammo" id="bAmmo" aria-label="Сменить заряд">Ядра</button>
+  <button class="fire" id="fireR" aria-label="Залп правым бортом">Залп ▶</button>
+</div>
+
+<div id="right">
+  <div id="extra">
+    <button id="bOar">Вёсла</button>
+    <button id="bSprint">Рывок</button>
+    <div id="stam" aria-hidden="true"><i id="stamI"></i></div>
+    <button id="bCb">Шверт ↓</button>
+    <button id="bSpirit" style="display:none;border-color:#9FD8EA">Дух ветра</button>
+  </div>
+  <div id="sailbox">
+    <div id="sail" role="slider" aria-label="Паруса: тяните вверх или вниз" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100" tabindex="0">
+      <div class="fill" id="sailFill"></div>
+      <div class="ticks"><i style="bottom:25%"></i><i style="bottom:50%"></i><i style="bottom:75%"></i></div>
+      <div class="val" id="sailVal">100%</div>
+    </div>
+    <div class="muted" style="text-align:center;font-size:12px">Паруса · W/S</div>
+  </div>
+</div>
+
+<div id="pick" class="overlay">
+  <div class="wrap">
+    <h1 class="sc">Парусники — открытое море</h1>
+    <div class="career"><div style="flex:1;min-width:220px"><b class="sc" style="font-size:18px">Карьера</b><div class="muted" style="font-size:13px">Старт в Вольной бухте на лодке с 300 золотыми. Торгуйте между пятью портами, собирайте бочки, отбивайтесь — и покупайте корабли фракций.</div></div><div style="display:flex;gap:8px"><button class="primary" id="bContinue" style="display:none">Продолжить</button><button class="primary" id="bCareer">Новая карьера</button></div></div>
+    <p class="muted" style="font-size:13px">Или попробуйте любой корабль сразу (3000 золота на старте):</p>
+    <p class="muted" style="display:none">Ветер меняется сам — смотрите на розу ветров. Против ветра — только галсами. Кольцо вокруг корабля: зелёное — быстро, жёлтое — медленно, красное — мёртвая зона. «Бой» вызывает противника: стреляйте бортом, когда он в светлом секторе.</p>
+    <div id="cards"></div>
+    <div class="help">Клавиатура: ← → руль, W/S паруса, Q/E залп левым/правым, F заряд, R вёсла, Shift рывок, C шверт.</div>
+  </div>
+</div>
+
+<div id="port" class="overlay" role="dialog" aria-label="Порт">
+  <div class="box">
+    <div class="hdr"><h1 class="sc" id="pName" style="margin:0">Порт</h1><span id="pFac" class="muted"></span><span class="sp"></span><span id="pGold" style="color:var(--brass);font-weight:700"></span><button class="primary" id="bLeave">Выйти в море</button></div>
+    <div class="tabs" role="tablist"><button data-tab="market" class="on">Рынок</button><button data-tab="yard">Верфь</button><button data-tab="tavern">Таверна</button><button data-tab="orders">Заказы</button></div>
+    <div id="pBody"></div>
+  </div>
+</div>
+<div id="mapov" class="overlay" role="dialog" aria-label="Карта">
+  <div class="box">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><h1 class="sc" style="margin:0;font-size:22px">Карта архипелага</h1><span class="muted" style="flex:1;font-size:13px">Стрелка — куда дует ветер сейчас. Цвет порта — фракция.</span><button class="primary" id="bMapClose">Закрыть</button></div>
+    <canvas id="mapcv" width="1200" height="760" aria-label="Карта островов и портов"></canvas>
+  </div>
+</div>
+
+<div id="over" class="overlay">
+  <div class="box">
+    <h1 class="sc" id="overT">Корабль затонул</h1>
+    <p class="muted" id="overP"></p>
+    <div class="btnrow"><button class="primary" id="bAgain">Ещё раз</button><button id="bOther">Другой корабль</button></div>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+var DEG = Math.PI/180, KN = 0.5144, GAME_SPEED = 4.5, TURN_BOOST = 1.0;
+var cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+var $ = function(id){ return document.getElementById(id); };
+function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+function wrap(a){ while (a > Math.PI) a -= 2*Math.PI; while (a < -Math.PI) a += 2*Math.PI; return a; }
+function fmt(x){ return (Math.round(x*10)/10).toFixed(1).replace('.',','); }
+function rnd(a,b){ return a+Math.random()*(b-a); }
+
+// ---------- Паруса как крыло: наборы фракций ----------
+var SETS = {
+  free:    { name:'Вольные косые',    b0:30, CLmax:1.3, CD0:0.08, k:0.07,  CDrun:0.9, fill:0.5, gust:1.0, limitB:6 },
+  empire:  { name:'Имперские прямые', b0:50, CLmax:0.9, CD0:0.20, k:0.13,  CDrun:2.2, fill:2.0, gust:0.7, limitB:9 },
+  rune:    { name:'Рунные',           b0:20, CLmax:1.4, CD0:0.03, k:0.045, CDrun:0.8, fill:1.0, gust:1.0, limitB:5 },
+  membrane:{ name:'Перепончатые',     b0:38, CLmax:1.6, CD0:0.12, k:0.07,  CDrun:1.2, fill:0.2, gust:1.3, limitB:6 }
+};
+function wing(set, beta){
+  var st = SETS[set], CL, CD, b = clamp(beta, 0, 180);
+  if (b < st.b0) { CL = 0; CD = st.CD0; }
+  else if (b <= 90) { CL = st.CLmax*Math.min(1, (b-st.b0)/12); CD = st.CD0 + st.k*CL*CL; }
+  else { var t=(b-90)/90; CL = st.CLmax*(1-t); CD = st.CD0 + st.k*CL*CL + st.CDrun*t; }
+  var r = b*DEG;
+  return { d: CL*Math.sin(r) - CD*Math.cos(r), s: Math.max(0, CL*Math.cos(r) + CD*Math.sin(r)), luff: b < st.b0 };
+}
+var WMAX = {}, POINT = {};
+Object.keys(SETS).forEach(function(k){ var m=0.01; for (var b=0;b<=180;b+=2) m=Math.max(m, wing(k,b).d); WMAX[k]=m;
+  var p=180; for (var b2=0;b2<=180;b2+=2){ if (wing(k,b2).d > 0.3*m){ p=b2; break; } } POINT[k]=p; });
+
+var SAILCOL = { free:'#EFE3C8', empire:'#F6F1E4', rune:'#BFE6F2', membrane:'#B0563F' };
+var FACT = {
+  free:{ n:'Вольные капитаны', col:'#5FA9C4' }, empire:{ n:'Империя', col:'#E0A84A' },
+  rune:{ n:'Аватары', col:'#9FD8EA' }, membrane:{ n:'Дракониды', col:'#E06A4B' }
+};
+var AMMO = {
+  ball:  { n:'Ядра',     range:1.0,  col:'#2B2F35' },
+  chain: { n:'Книппели', range:0.75, col:'#5B3A22' },
+  grape: { n:'Картечь',  range:0.45, col:'#9AA3AD' },
+  fire:  { n:'Огонь',    range:0.4,  col:'#F08A4B', sp:90,  spread:22 },
+  fireball:{ n:'Огн. шары', range:0.9, col:'#E8642C', sp:110 },
+  gust:  { n:'Порыв',    range:1.0,  col:'#BFE6F2', sp:140 }
+};
+var AMMO_ORDER = ['ball','chain','grape'];
+var TROPHY = { shards:0, sylph:false, gland:false };
+function playerAmmo(){ var a = AMMO_ORDER.slice(); if (P && (P.c.id==='drake' || TROPHY.gland)) a.push('fire'); return a; }
+var BEST = {}; Object.keys(SETS).forEach(function(k){ var m=-1, bb=90; for (var b=40;b<=150;b+=2){ var v=wing(k,b).d; if (v>m){ m=v; bb=b; } } BEST[k]=bb; });
+
+// ---------- Корабли ----------
+var SHIPS = [
+  { id:'boat', name:'Лодка «Чайка»', fac:'free', set:'free',
+    L:5, B:1.8, m:800, k:69, kLatDown:515, kLatUp:194, hCE:3.0, GM:0.45, capsize:55, flood:99,
+    maxTurn:38, draftDown:0.9, draftUp:0.3, cb:true, zoom:7, hullMul:1, planing:false,
+    sails:[{area:14, x:0.05, kind:'fore'}],
+    oar:{ kind:'yuloh', cruise:45, sprint:0, pivot:8 },
+    guns:{ n:1, dmg:0.6, range:250, reload:6 }, cap:8, price:0,
+    notes:['Учебная, 1 косой парус','Шверт ↓/↑: снос или рифы','1 фальконет на борт — в бой лучше не лезть'] },
+  { id:'shebeka', name:'Шебека «Чёрная чайка»', fac:'free', set:'free',
+    L:25, B:6, m:150000, k:950, kLat:4260, hCE:9, GM:0.5, capsize:99, flood:26,
+    maxTurn:11, draft:1.8, zoom:1.9, hullMul:1, planing:false,
+    sails:[{area:140, x:0.28, kind:'fore'},{area:120, x:0.02, kind:'fore'},{area:90, x:-0.3, kind:'fore'}],
+    oar:{ kind:'oars', cruise:5000, sprint:16000, pivot:5 },
+    guns:{ n:5, dmg:1, range:400, reload:8 }, cap:40, price:1200,
+    notes:['Острее всех обычных к ветру','Быстрый поворот, 20 вёсел','5 лёгких пушек на борт'] },
+  { id:'bark', name:'Барк «Солнечный щит»', fac:'empire', set:'empire',
+    L:40, B:10, m:500000, k:1390, kLat:24000, hCE:14, GM:0.5, capsize:99, flood:24,
+    maxTurn:5.5, draft:5.5, zoom:1.25, hullMul:0.95, planing:false,
+    sails:[{area:80, x:0.48, kind:'fore'},{area:300, x:0.24, kind:'square'},{area:380, x:0.0, kind:'square'},{area:140, x:-0.28, kind:'fore'}],
+    oar:null,
+    guns:{ n:12, dmg:2, range:550, reload:14 }, cap:160, price:5000,
+    notes:['Король бакштага и шторма','12 тяжёлых пушек на борт','Против ветра беспомощен'] },
+  { id:'skiff', name:'Скиф Аватаров «Ветреница»', fac:'rune', set:'rune',
+    L:12, B:5, m:3000, k:30, kLat:2600, hCE:5, GM:2.5, capsize:60, flood:99,
+    maxTurn:22, draft:0.8, zoom:3.6, hullMul:1, planing:true,
+    sails:[{area:60, x:0.06, kind:'fore'}],
+    oar:{ kind:'spirit', cruise:300, sprint:0, pivot:10 },
+    guns:{ n:2, dmg:2, range:450, reload:7 }, cap:10, price:2000,
+    notes:['Быстрее ветра на острых курсах','2 стихийных орудия на борт','При 6 баллах руны гаснут'] },
+  { id:'drake', name:'Бриг «Пепельный коготь»', fac:'membrane', set:'membrane',
+    L:28, B:7, m:200000, k:1100, kLat:9000, hCE:11, GM:0.42, capsize:99, flood:24,
+    maxTurn:9, draft:3.2, zoom:1.7, hullMul:1.05, planing:false,
+    sails:[{area:220, x:0.2, kind:'square'},{area:230, x:-0.12, kind:'square'}],
+    oar:null,
+    guns:{ n:8, dmg:1.6, range:500, reload:10 }, cap:70, price:3500,
+    notes:['Живые паруса ловят порыв','8 пушек на борт','Кренится сильнее всех'] }
+];
+function shipById(id){ for (var i=0;i<SHIPS.length;i++) if (SHIPS[i].id===id) return SHIPS[i]; }
+
+// ---------- Мир ----------
+var WORLD_R = 3300;
+var PORTS = [
+  { id:'free',     name:'Вольная бухта',     fac:'free',     x:0,     y:700,   sells:'shebeka' },
+  { id:'coral',    name:'Коралловый рынок',  fac:'neutral',  x:1900,  y:-500,  sells:null },
+  { id:'empire',   name:'Солнечная гавань',  fac:'empire',   x:-2100, y:-1300, sells:'bark' },
+  { id:'rune',     name:'Храм ветров',       fac:'rune',     x:700,   y:-2500, sells:'skiff' },
+  { id:'membrane', name:'Драконье гнездо',   fac:'membrane', x:2500,  y:2000,  sells:'drake' }
+];
+var PORTCOL = { free:'#5FA9C4', neutral:'#E9DCC0', empire:'#E0A84A', rune:'#9FD8EA', membrane:'#E06A4B' };
+function mulberry(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; var t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+var ISL = [];
+(function(){
+  var r = mulberry(1977);
+  PORTS.forEach(function(p, i){ ISL.push({ x:p.x, y:p.y-330, r:230, seed:i+1, port:p }); });
+  var tries = 0;
+  while (ISL.length < 22 && tries < 2000){
+    tries++;
+    var x = (r()*2-1)*WORLD_R, y = (r()*2-1)*WORLD_R, rad = 140 + r()*260;
+    if (Math.hypot(x,y) > WORLD_R) continue;
+    var ok = true;
+    for (var k=0;k<ISL.length;k++){ if (Math.hypot(x-ISL[k].x, y-ISL[k].y) < ISL[k].r + rad + 420) { ok=false; break; } }
+    PORTS.forEach(function(p){ if (Math.hypot(x-p.x,y-p.y) < rad + 650) ok=false; });
+    if (ok) ISL.push({ x:x, y:y, r:rad, seed:ISL.length+11 });
+  }
+})();
+ISL.forEach(function(I){ I.n=[]; for (var i=0;i<24;i++){ I.n.push(0.8+0.35*Math.abs(Math.sin(I.seed*12.9898+i*78.233)*43758.5453%1)); } });
+function islR(I, ang){ var t=((ang/(2*Math.PI))%1+1)%1*24, i=Math.floor(t), f=t-i; var a=I.n[i%24], b=I.n[(i+1)%24]; return I.r*(a+(b-a)*f); }
+function depthAt(x,y){
+  var d = 40;
+  for (var i=0;i<ISL.length;i++){
+    var I=ISL[i], dx=x-I.x, dy=y-I.y, dist=Math.hypot(dx,dy), R=islR(I, Math.atan2(dy,dx));
+    if (dist<R) return -1;
+    if (dist<R+30) d=Math.min(d,0.6); else if (dist<R+120) d=Math.min(d,2.2); else if (dist<R+220) d=Math.min(d,6);
+  }
+  for (var j=0;j<PORTS.length;j++){ if (Math.hypot(x-PORTS[j].x, y-PORTS[j].y) < 230) return 12; }
+  return d;
+}
+var GUSTS = [], BARRELS = [], BUOYS = [ {x:0,y:1150},{x:450,y:1450},{x:250,y:1950},{x:-350,y:1600} ];
+function freeSpot(cx,cy,R,minD){ for (var k=0;k<60;k++){ var x=cx+rnd(-R,R), y=cy+rnd(-R,R); if (depthAt(x,y)>(minD||6) && Math.hypot(x-cx,y-cy)>120) return {x:x,y:y}; } return {x:cx+R, y:cy}; }
+function initWorld(){
+  GUSTS=[]; BARRELS=[];
+  for (var i=0;i<8;i++){ var p=freeSpot(P.x,P.y,1600); GUSTS.push({x:p.x,y:p.y,r:rnd(90,170)}); }
+  for (var j=0;j<80;j++){ var q=freeSpot(0,0,WORLD_R); BARRELS.push({x:q.x,y:q.y}); }
+}
+function gustAt(x,y){ var f=1; GUSTS.forEach(function(g){ var d=Math.hypot(x-g.x,y-g.y); if (d<g.r) f=Math.max(f, 1+0.7*(1-d/g.r)); }); return f; }
+
+// ---------- Экономика ----------
+var GOODS = [
+  { id:'rum',   n:'Ром',            base:40 },  { id:'cloth', n:'Ткани',        base:70 },
+  { id:'iron',  n:'Железо',         base:35 },  { id:'spice', n:'Пряности',     base:120 },
+  { id:'scale', n:'Драконья чешуя', base:180 }, { id:'rune',  n:'Рунные камни', base:220 }
+];
+var PORT_MUL = {
+  free:    { rum:0.55, cloth:1.0,  iron:1.35, spice:1.25, scale:1.2,  rune:1.3 },
+  coral:   { rum:1.0,  cloth:0.8,  iron:1.0,  spice:0.6,  scale:1.05, rune:1.05 },
+  empire:  { rum:1.45, cloth:0.65, iron:0.55, spice:1.4,  scale:1.45, rune:1.15 },
+  rune:    { rum:1.3,  cloth:1.35, iron:1.5,  spice:1.1,  scale:1.3,  rune:0.55 },
+  membrane:{ rum:1.5,  cloth:1.4,  iron:1.25, spice:1.3,  scale:0.55, rune:1.4 }
+};
+PORTS.forEach(function(p){ p.sup = {}; GOODS.forEach(function(g){ p.sup[g.id] = 1; }); });
+function priceBuy(p,g){ return Math.max(1, Math.round(g.base*PORT_MUL[p.id][g.id]*p.sup[g.id]*1.06*repMul(p.fac))); }
+function priceSell(p,g){ return Math.max(1, Math.round(g.base*PORT_MUL[p.id][g.id]*p.sup[g.id]*0.94*(2-repMul(p.fac)))); }
+function cargoUsed(sh){ var n=0; if (sh.cargo) for (var k in sh.cargo) n += sh.cargo[k]; return n; }
+function loadOf(sh){ return sh.cargo ? cargoUsed(sh)/Math.max(1, sh.c.cap) : 0; }
+var paused = false, curPort = null, portTab = 'market', encT = 40, career = false;
+var FACS = ['free','empire','rune','membrane'];
+var REP = { free:10, empire:0, rune:0, membrane:0 };
+var ENEMY_OF = { free:['empire'], empire:['free','membrane'], rune:['membrane'], membrane:['rune','empire'] };
+var FAC_SHIP = { free:'shebeka', empire:'bark', rune:'skiff', membrane:'drake' };
+var ORDERS = [], ORDER_SEQ = 1;
+function repStatus(f){ var r = REP[f]; return r <= -50 ? 'Враг' : (r <= -10 ? 'Недоверие' : (r < 20 ? 'Нейтралитет' : (r < 50 ? 'Друг' : 'Союзник'))); }
+function repMul(fac){ if (fac === 'neutral') return 1; var r = REP[fac]; return r <= -10 ? 1.15 : (r < 20 ? 1 : (r < 50 ? 0.95 : 0.9)); }
+function addRep(f, d){ if (!REP.hasOwnProperty(f)) return 0; var before = REP[f]; REP[f] = clamp(REP[f] + d, -100, 100); return REP[f] - before; }
+function portClosed(p){ return p.fac !== 'neutral' && REP[p.fac] <= -50; }
+function resetCareer(){
+  REP = { free:10, empire:0, rune:0, membrane:0 }; ORDERS = []; ORDER_SEQ = 1; TROPHY = { shards:0, sylph:false, gland:false };
+  PORTS.forEach(function(p){ GOODS.forEach(function(g){ p.sup[g.id] = 1; }); p.board = null; p.boardT = 0; p.turn = 0; });
+}
+var SAVE_KEY = 'parusniki.career.v1';
+function saveGame(portId){
+  if (!career || !P || P.sunk) return;
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ ship:P.c.id, set:P.c.set, gold:gold, barrels:barrels, kills:kills, hull:P.hull, sails:P.sails, crew:P.crew,
+    cargo:P.cargo, rep:REP, trophy:TROPHY, orders:ORDERS, seq:ORDER_SEQ, T:T, port:portId || (curPort && curPort.id) || 'free',
+    ports:PORTS.map(function(q){ return { sup:q.sup, board:q.board||null, boardT:q.boardT||0, turn:q.turn||0 }; }) })); } catch(e){}
+}
+function loadSave(){ try { var t = localStorage.getItem(SAVE_KEY); return t ? JSON.parse(t) : null; } catch(e){ return null; } }
+function continueCareer(){
+  var d = loadSave(); if (!d) return false;
+  career = true; barrels = d.barrels||0; kills = d.kills||0;
+  var port = PORTS.filter(function(q){ return q.id === d.port; })[0] || PORTS[0];
+  start(shipById(d.ship) || SHIPS[0], { gold:d.gold, msg:'Продолжаем: ' + port.name + '.' });
+  P.c.set = d.set; P.hull = d.hull; P.sails = d.sails; P.crew = d.crew; P.cargo = d.cargo || {};
+  REP = d.rep; ORDERS = d.orders || []; TROPHY = d.trophy || { shards:0, sylph:false, gland:false }; ORDER_SEQ = d.seq || 1; T = d.T || 0;
+  (d.ports||[]).forEach(function(q, i){ if (PORTS[i]){ PORTS[i].sup = q.sup; PORTS[i].board = q.board; PORTS[i].boardT = q.boardT; PORTS[i].turn = q.turn; } });
+  ORDERS.forEach(function(o){ if (o.type === 'hunt') { o.spawned = false; o.spawnIn = 30; } });
+  P.x = port.x; P.y = port.y + 120; setShipLabels();
+  openPort(port, true);
+  return true;
+}
+
+// ---------- Состояние ----------
+var P = null, ENEMIES = [], BALLS = [], FX = [], T = 0;
+var WIND = { dir:0, sp:6, tdir:0, tsp:6, next:0 };
+function bftOf(ms){ var th=[0.3,1.6,3.4,5.5,8,10.8,13.9,17.2,20.8]; var b=0; while (b<th.length && ms>=th[b]) b++; return b; }
+function pickWind(first){
+  // чаще 3–5 баллов, иногда штиль или свежий ветер
+  var r = Math.random(), sp = r < 0.08 ? rnd(2, 3.5) : (r < 0.75 ? rnd(5.5, 9) : rnd(9, 12.5));
+  WIND.tsp = sp;
+  WIND.tdir = first ? rnd(0, 2*Math.PI) : WIND.dir + rnd(-70, 70)*DEG;
+  WIND.next = T + rnd(700, 1400);
+  if (first){ WIND.dir = WIND.tdir; WIND.sp = WIND.tsp; }
+}
+function updWind(dt){
+  if (T > WIND.next){ var oldB = bftOf(WIND.tsp); pickWind(false); var nb = bftOf(WIND.tsp); if (P && nb !== oldB) toast(nb > oldB ? 'Ветер крепчает — до ' + nb + ' баллов.' : (nb <= 2 ? 'Ветер стихает, почти штиль.' : 'Ветер слабеет — ' + nb + ' балла.')); }
+  WIND.dir += wrap(WIND.tdir - WIND.dir)*Math.min(1, dt/60);
+  WIND.sp += (WIND.tsp - WIND.sp)*Math.min(1, dt/45);
+}
+var zoomMul = 1, race = null, best = {}, gold = 0, barrels = 0, kills = 0;
+var keys = {};
+
+function newShip(c, x, y, psi, isPlayer){
+  return { c:c, isPlayer:isPlayer, x:x, y:y, psi:psi, vx:0, vy:0, om:0, heel:0, fill:1, over:false, stam:100,
+    trail:[], trailT:0, aground:false, capsized:false, flood:false, sideSign:1, lastDepth:40, inGust:false,
+    hull:1, sails:1, crew:1, water:0, leak:0, rel:{L:1, R:1}, ammo:'ball', sunk:false, sinkT:0, surrendered:false,
+    inp:{ rudder:0, sail:1, oar:false, sprint:false, cbDown:true }, info:{}, ai:{ tack:1, tackT:0, think:0 }, lastHitMsg:-99 };
+}
+
+function start(base, opts){
+  opts = opts || {};
+  var c = Object.assign({}, base);
+  var sp = PORTS[0];
+  T = 0; P = newShip(c, sp.x + (opts.x||0), sp.y + 120, Math.PI, true);
+  P.cargo = {}; if (opts.gold != null) gold = opts.gold;
+  paused = false; curPort = null; encT = 250;
+  pickWind(true);
+  ENEMIES = []; BALLS = []; FX = [];
+  race = null; $('race').style.display='none'; $('enemy').style.display='none';
+  initWorld(); setSailUI();
+  setShipLabels();
+  $('vh').textContent = (c.planing ? 'нет (глиссирует)' : fmt(2.43*Math.sqrt(c.L)*c.hullMul) + ' уз');
+  $('bOar').style.display = c.oar ? '' : 'none';
+  $('bSprint').style.display = c.oar && c.oar.sprint ? '' : 'none';
+  $('stam').style.display = c.oar && c.oar.sprint ? '' : 'none';
+  $('bCb').style.display = c.cb ? '' : 'none';
+  $('bOar').textContent = c.oar ? (c.oar.kind==='yuloh' ? 'Юлоу' : (c.oar.kind==='spirit' ? 'Дух воды' : 'Вёсла')) : '';
+  $('guns').style.display = 'flex';
+  updBtns();
+  $('pick').style.display='none'; $('over').style.display='none';
+  toast(opts.msg || ('На воде у Вольной бухты. Паруса: ' + SETS[c.set].name + '.'));
+}
+
+function setShipLabels(){
+  var c = P.c;
+  $('shipName').textContent = c.name + ' · ' + FACT[c.fac].n + (c.set !== c.fac ? ' · паруса: ' + SETS[c.set].name : '');
+  $('vh').textContent = (c.planing ? 'нет (глиссирует)' : fmt(2.43*Math.sqrt(c.L)*c.hullMul) + ' уз');
+  $('bOar').style.display = c.oar ? '' : 'none';
+  $('bSprint').style.display = c.oar && c.oar.sprint ? '' : 'none';
+  $('stam').style.display = c.oar && c.oar.sprint ? '' : 'none';
+  $('bCb').style.display = c.cb ? '' : 'none';
+  $('bOar').textContent = c.oar ? (c.oar.kind==='yuloh' ? 'Юлоу' : (c.oar.kind==='spirit' ? 'Дух воды' : 'Вёсла')) : '';
+}
+function toast(t, warn){ var el=$('toast'); el.textContent=t; el.className=warn?'warn':''; el.style.opacity=1; clearTimeout(toast._t); toast._t=setTimeout(function(){ el.style.opacity=0; }, 2600); }
+function pmsg(sh, t, warn){ if (sh.isPlayer) toast(t, warn); }
+
+// ---------- Физика ----------
+function windNow(t){
+  var base = WIND.sp;
+  return { sp: base*(1+0.12*Math.sin(t*0.31)+0.08*Math.sin(t*1.13+1.3)), dir: WIND.dir + (4*Math.sin(t*0.045)+2*Math.sin(t*0.13))*DEG };
+}
+
+function physics(sh, W0, dt){
+  var c = sh.c, inp = sh.inp;
+  if (sh.stolen && T < sh.stolen.until) W0 = { sp: W0.sp*0.9, dir: sh.stolen.dir };
+  else if (sh.boost && T < sh.boost.until){ var side = (sh.info && sh.info.awaS < 0) ? -1 : 1; W0 = { sp: W0.sp*1.35, dir: sh.psi + side*BEST[c.set]*DEG }; }
+  var gf0 = gustAt(sh.x, sh.y), gf = 1 + (gf0-1)*SETS[c.set].gust;
+  if (sh.heatUntil && T < sh.heatUntil) gf *= 1.4;
+  var Wsp = W0.sp*gf;
+  // пожар
+  if (sh.fire > 0 && !sh.sunk){
+    var fk = c.set === 'membrane' ? 0.4 : 1, rain = bftOf(W0.sp) >= 6 ? 0.012 : 0;
+    sh.sails = Math.max(0, sh.sails - 0.03*sh.fire*dt); sh.hull = Math.max(0, sh.hull - 0.008*sh.fire*dt);
+    sh.fire = clamp(sh.fire + (0.01*sh.fire*fk - 0.006*Math.max(0.2, sh.crew) - rain)*dt, 0, 1);
+  }
+  if (sh.isPlayer){ if (gf0>1.15 && !sh.inGust){ sh.inGust=true; toast('Шквал! Ветер усилился — держите крен.'); } else if (gf0<1.05) sh.inGust=false; }
+  var wx = -Math.sin(W0.dir)*Wsp, wy = Math.cos(W0.dir)*Wsp;
+  var fx = Math.sin(sh.psi), fy = -Math.cos(sh.psi), rx = Math.cos(sh.psi), ry = Math.sin(sh.psi);
+  var ax = wx - sh.vx, ay = wy - sh.vy, aSp = Math.hypot(ax, ay);
+  var awaS = Math.atan2(-(ax*rx+ay*ry), -(ax*fx+ay*fy))/DEG, awa = Math.abs(awaS);
+  var q = 0.613*aSp*aSp;
+  var w = wing(c.set, awa), A = 0; c.sails.forEach(function(s){ A+=s.area; });
+  var set = (sh.capsized || sh.sunk) ? 0 : inp.sail;
+  var cosH = Math.cos(sh.heel*DEG), st = SETS[c.set];
+  sh.fill += ((w.luff?0:1) - sh.fill)*Math.min(1, dt/(w.luff ? 0.3 : st.fill/Math.max(0.35, sh.crew)));
+  var bft = bftOf(W0.sp) + (gf0>1.15 ? 1 : 0);
+  var over = bft > st.limitB && set > 0.5;
+  if (over && !sh.over) pmsg(sh, c.set==='rune' ? 'Руны перегружены и гаснут! Уберите паруса до 50%.' : 'Ветер сильнее предела парусов — уберите часть!', true);
+  sh.over = over;
+  var eff = sh.fill * (over ? (c.set==='rune' ? 0.25 : 0.7) : 1) * (0.2 + 0.8*sh.sails);
+  var drive = q*w.d*A*set*cosH*eff, side = q*w.s*A*set*cosH*eff;
+  var u = sh.vx*fx + sh.vy*fy, lat = sh.vx*rx + sh.vy*ry;
+
+  var oarF = 0;
+  if (c.oar && inp.oar && !sh.capsized && !sh.aground && !sh.sunk){
+    var crewK = Math.max(0.2, sh.crew);
+    if (c.oar.sprint && inp.sprint && sh.stam>1){ oarF = c.oar.sprint*crewK; sh.stam -= 12*dt; }
+    else { oarF = c.oar.cruise*crewK; if (c.oar.sprint) sh.stam -= 0.6*dt; }
+    if (sh.stam<=0){ sh.stam=0; if (c.oar.sprint){ inp.oar=false; if (sh.isPlayer){ updBtns(); toast('Гребцы выдохлись — нужен отдых.', true); } } }
+  } else if (c.oar && c.oar.sprint) sh.stam = Math.min(100, sh.stam + 5*dt);
+
+  var load = loadOf(sh);
+  var mass = c.m*(1 + 0.35*sh.water + 0.5*load);
+  var vh = 2.43*Math.sqrt(c.L)*KN*c.hullMul;
+  var wave = c.planing ? 0 : Math.max(0, Math.abs(u)/vh - 0.8);
+  var Rf = c.k*u*Math.abs(u)*(1 + 14*wave*wave)*(sh.flood ? 1.8 : 1)*(1 + 1.5*sh.water);
+  var kLat = c.cb ? (inp.cbDown ? c.kLatDown : c.kLatUp) : c.kLat;
+  var sideDir = awaS>=0 ? -1 : 1;
+  var Rl = kLat*lat*(Math.abs(u)+0.6) + c.k*25*lat*Math.abs(lat);
+  var Fx = drive + oarF - Rf, Fy = sideDir*side - Rl;
+  sh.vx += (fx*Fx + rx*Fy)/mass*dt; sh.vy += (fy*Fx + ry*Fy)/mass*dt;
+
+  var u2 = sh.vx*fx + sh.vy*fy;
+  var effR = Math.min(1, Math.abs(u2)/(0.35*vh));
+  var target = sh.sunk ? 0 : inp.rudder*c.maxTurn*TURN_BOOST*effR*(u2>=0?1:-1);
+  if (c.oar && inp.oar && Math.abs(inp.rudder)>0.05) target += inp.rudder*c.oar.pivot*(1-effR);
+  sh.om += (target*DEG - sh.om)*Math.min(1, dt*3);
+  sh.psi += sh.om*dt;
+
+  var r = side*c.hCE/(mass*9.81*c.GM*(1-0.45*sh.water)*(1+0.15*load));
+  var heelT = r>=1 ? 90 : Math.asin(Math.min(1, r))/DEG;
+  sh.heel += (heelT - sh.heel)*Math.min(1, dt*1.5);
+  if (!sh.capsized && sh.heel > c.capsize){ sh.capsized = true; sh.vx*=0.2; sh.vy*=0.2; if (sh.isPlayer){ toast('Перевернулись! Слишком много парусов для такого ветра.', true); updBtns(); } }
+  var wasFlood = sh.flood; sh.flood = sh.heel > c.flood;
+  if (sh.flood){ sh.water = Math.min(1, sh.water + 0.004*dt); }
+  if (sh.flood && !wasFlood) pmsg(sh, 'Крен ' + Math.round(sh.heel) + '°: черпаем воду нижними портами!', true);
+  sh.sideSign = sideDir;
+
+  // течь и помпы
+  sh.water = clamp(sh.water + (sh.leak - 0.004*sh.crew)*dt, 0, 1);
+  sh.leak = Math.max(0, sh.leak - 0.0004*sh.crew*dt);
+  if (!sh.sunk && (sh.water >= 1 || sh.hull <= 0)) sinkShip(sh);
+
+  var nx = sh.x + sh.vx*dt, ny = sh.y + sh.vy*dt;
+  var baseDraft = c.cb ? (inp.cbDown ? c.draftDown : c.draftUp) : c.draft;
+  var draft = baseDraft + sh.water*0.8 + load*0.25*(c.draft||0.6);
+  var dep = depthAt(nx + fx*c.L*0.4, ny + fy*c.L*0.4);
+  sh.lastDepth = depthAt(sh.x, sh.y);
+  if (dep < 0 || dep < draft){
+    if (!sh.aground) pmsg(sh, dep<0 ? 'Берег! Отворачивайте.' : 'Сели на мель: глубина ' + fmt(dep) + ' м, осадка ' + fmt(draft) + ' м.' + (c.cb && inp.cbDown ? ' Поднимите шверт!' : ''), true);
+    sh.aground = true; sh.vx = 0; sh.vy = 0;
+  } else { sh.aground = false; sh.x = nx; sh.y = ny; }
+
+  sh.trailT += dt;
+  if (sh.trailT > 0.25){ sh.trailT=0; sh.trail.push({x:sh.x - fx*c.L*0.5, y:sh.y - fy*c.L*0.5, t:T}); if (sh.trail.length>120) sh.trail.shift(); }
+
+  // перезарядка
+  var relT = 0.6*c.guns.reload/Math.max(0.25, 0.4 + 0.6*sh.crew) * (sh.fire > 0.1 ? 1.5 : 1);
+  sh.rel.L = Math.min(1, sh.rel.L + dt/relT); sh.rel.R = Math.min(1, sh.rel.R + dt/relT);
+
+  sh.info = { W:{sp:Wsp, trueSp:W0.sp, dir:W0.dir, gust:gf0}, luff:w.luff, awa:awa, awaS:awaS, aSp:aSp, u:u2, w:sh.vx*rx+sh.vy*ry, draft:draft };
+}
+
+function sinkShip(sh){
+  sh.sunk = true; sh.sinkT = 0; sh.inp.sail = 0;
+  if (sh.isPlayer){ setTimeout(function(){ showOver('Корабль затонул', 'Вода в трюме или корпус разбит. Добыча: ' + gold + ' золота, побед: ' + kills + '.'); }, 1400); }
+  else { kills++; var g = 300 + Math.round(sh.c.L*12); gold += g; toast((sh.c.spirit ? 'Сильф рассыпается пеной! +' : 'Противник тонет! +') + g + ' золота. ' + onDefeat(sh, 'sink')); }
+}
+
+// ---------- Стрельба ----------
+function fire(sh, side){
+  if (sh.sunk || sh.capsized || sh.surrendered) return false;
+  if (sh.rel[side] < 1) return false;
+  if (sh.isPlayer) TUT.data.fired = true;
+  sndHit(sh.ammo==='gust' ? 'whoosh' : 'boom', sh.x, sh.y);
+  sh.rel[side] = 0;
+  var c = sh.c, g = c.guns, am = AMMO[sh.ammo];
+  var fx = Math.sin(sh.psi), fy = -Math.cos(sh.psi), rx = Math.cos(sh.psi), ry = Math.sin(sh.psi);
+  var s = side === 'L' ? -1 : 1;
+  var low = (s === sh.sideSign) && sh.heel > 5;    // борт, на который кренится
+  var high = (s !== sh.sideSign) && sh.heel > 5;
+  var range = g.range*am.range*(low ? 0.85 : (high ? 1.1 : 1));
+  for (var i=0; i<g.n; i++){
+    var along = g.n===1 ? 0 : (-0.32 + 0.64*i/(g.n-1))*c.L;
+    var px = sh.x + fx*along + rx*s*c.B*0.55, py = sh.y + fy*along + ry*s*c.B*0.55;
+    var spread = (Math.random()-0.5)*(AMMO[sh.ammo].spread || (sh.ammo==='grape' ? 14 : 5))*DEG;
+    var dx = rx*s, dy = ry*s, ca = Math.cos(spread), sa = Math.sin(spread);
+    var vx = dx*ca - dy*sa, vy = dx*sa + dy*ca;
+    var sp = AMMO[sh.ammo].sp || 160;
+    BALLS.push({ x:px, y:py, vx:vx*sp + sh.vx, vy:vy*sp + sh.vy, d:0, max:range*(0.92+Math.random()*0.12), owner:sh, ammo:sh.ammo, dmg:g.dmg, zone: low ? 'low' : (high ? 'high' : 'mid'), delay: i*0.06 });
+    FX.push({ type:'smoke', x:px + vx*3, y:py + vy*3, t:0, life:1.6 + Math.random()*0.6, r:Math.max(3, c.B*0.5) });
+  }
+  if (sh.isPlayer) updFireUI();
+  return true;
+}
+
+function applyHit(t, b){
+  var sz = Math.max(0.6, Math.sqrt(t.c.L/25)), d = b.dmg/sz;
+  if (t.c.spirit && b.ammo === 'ball') d *= 1.5;
+  if (b.ammo === 'gust'){
+    t.sails -= 0.05*d*(b.zone==='high' ? 1.3 : 1); t.heel = Math.min(60, t.heel + 6); t.crew -= 0.004*d;
+    if (t.isPlayer && T - t.lastHitMsg > 3){ t.lastHitMsg = T; toast('Режущий порыв рвёт паруса!', true); }
+  } else if (b.ammo === 'fire' || b.ammo === 'fireball'){
+    var fk = t.c.set === 'membrane' ? 0.35 : (t.c.spirit ? 0.2 : 1);
+    t.fire = Math.min(1, (t.fire||0) + (b.ammo==='fire' ? 0.06 : 0.03)*d*fk);
+    if (b.ammo === 'fireball'){ t.hull -= 0.022*d; } else { t.crew -= 0.012*d; t.sails -= 0.015*d; }
+    if (t.isPlayer && T - t.lastHitMsg > 3){ t.lastHitMsg = T; toast('Пожар на борту! Команда тушит — пушки заряжаются медленнее.', true); }
+  } else if (b.ammo === 'ball'){
+    t.hull -= 0.04*d;
+    if (Math.random() < (b.zone==='low' ? 0.65 : (b.zone==='high' ? 0.25 : 0.45))) { t.leak += 0.0045*d; if (t.isPlayer && T - t.lastHitMsg > 3){ t.lastHitMsg = T; toast('Пробоина ниже ватерлинии — течь!', true); } }
+    t.sails -= (b.zone==='high' ? 0.04 : 0.014)*d; t.crew -= 0.012*d;
+  } else if (b.ammo === 'chain'){
+    t.sails -= 0.045*d*(b.zone==='high' ? 1.3 : 0.85); t.crew -= 0.01*d; t.hull -= 0.015*d;
+  } else {
+    t.crew -= 0.045*d; t.sails -= 0.02*d;
+  }
+  t.hull = clamp(t.hull,0,1); t.sails = clamp(t.sails,0,1); t.crew = clamp(t.crew,0,1);
+  if (!t.isPlayer && b.owner === P && !t.hostile){ t.hostile = true; addRep(t.fac, -10); toast('Вы напали на мирный корабль: ' + FACT[t.fac].n + ' −10, теперь он враг.', true); }
+  if (!t.isPlayer && !t.c.spirit && !t.surrendered && !t.sunk && t.crew < 0.35){ t.surrendered = true; t.inp.sail = 0; t.inp.oar = false; toast('Противник спустил флаг! Подойдите вплотную, чтобы взять приз.'); }
+  if (t.isPlayer && !t.lost && t.crew < 0.12){ t.lost = true; t.inp.sail = 0; setTimeout(function(){ showOver('Корабль взят на абордаж', 'Команда выбита картечью. Добыча: ' + gold + ' золота, побед: ' + kills + '.'); }, 900); }
+  if (t.isPlayer && T - t.lastHitMsg > 3 && (b.ammo === 'chain' || b.ammo === 'grape')){ t.lastHitMsg = T; toast(b.ammo==='chain' ? 'Книппели рвут наши паруса!' : 'Картечь по палубе — теряем людей!', true); }
+}
+
+function updBalls(dt){
+  for (var i=BALLS.length-1; i>=0; i--){
+    var b = BALLS[i];
+    if (b.delay > 0){ b.delay -= dt; continue; }
+    var stepLen = Math.hypot(b.vx - b.owner.vx, b.vy - b.owner.vy)*dt;
+    var hit = null, all = [P].concat(ENEMIES);
+    var nSub = Math.max(1, Math.ceil(Math.hypot(b.vx, b.vy)*dt/1.5));
+    for (var ss=0; ss<nSub && !hit; ss++){
+      b.x += b.vx*dt/nSub; b.y += b.vy*dt/nSub;
+      for (var j=0; j<all.length; j++){
+        var t = all[j]; if (t === b.owner || t.sunk) continue;
+        var dx = b.x - t.x, dy = b.y - t.y;
+        var along = dx*Math.sin(t.psi) - dy*Math.cos(t.psi), lat = dx*Math.cos(t.psi) + dy*Math.sin(t.psi);
+        if (Math.abs(along) < t.c.L*0.5 && Math.abs(lat) < t.c.B*0.5 + 0.8){ hit = t; break; }
+      }
+    }
+    b.d += stepLen;
+    if (hit){ sndHit('crack', b.x, b.y); applyHit(hit, b); FX.push({ type:'hit', x:b.x, y:b.y, t:0, life:0.8, r:Math.max(4, hit.c.B*0.6) }); BALLS.splice(i,1); continue; }
+    if (b.d > b.max || depthAt(b.x,b.y) < 0){ if (Math.random() < 0.35) sndHit('splash', b.x, b.y); FX.push({ type:'splash', x:b.x, y:b.y, t:0, life:1.0, r:4 }); BALLS.splice(i,1); }
+  }
+  for (var k=FX.length-1; k>=0; k--){ FX[k].t += dt; if (FX[k].t > FX[k].life) FX.splice(k,1); }
+}
+
+// ---------- Противник ----------
+function spawnEnemy(opts){
+  opts = opts || {};
+  if (!P || P.sunk) return null;
+  var fac = opts.fac;
+  if (!fac){
+    var w = FACS.map(function(f){ var r = REP[f], wt = r <= -50 ? 4 : (r <= -10 ? 3 : (r < 20 ? 1 : 0.6)); if (P.c.id==='boat' && f==='empire') wt *= 0.2; return wt; });
+    var tot = w.reduce(function(a,b){ return a+b; }, 0), x = Math.random()*tot; fac = FACS[0];
+    for (var i=0;i<FACS.length;i++){ x -= w[i]; if (x <= 0){ fac = FACS[i]; break; } }
+  }
+  var c = shipById(FAC_SHIP[fac]);
+  var W0 = windNow(T), best = null;
+  for (var k=0;k<40;k++){
+    var a = W0.dir + rnd(-1.4, 1.4) + (k>20 ? Math.PI : 0);
+    var R = rnd(380, 470) + (opts.far ? 300 : 0);
+    var px = P.x + Math.sin(a)*R, py = P.y - Math.cos(a)*R;
+    if (depthAt(px,py) > c.draft + 3){ best = {x:px, y:py}; break; }
+  }
+  if (!best) best = freeSpot(P.x, P.y, 800, 8);
+  var psi = Math.atan2(P.x - best.x, -(P.y - best.y));
+  var cc = Object.assign({}, c);
+  if (fac === 'rune'){ cc.spirit = true; cc.name = 'Сильф — дух ветра'; cc.guns = { n:3, dmg:1.6, range:450, reload:7 }; }
+  var e = newShip(cc, best.x, best.y, psi, false);
+  e.cd = fac === 'rune' ? 15 : 10;
+  e.fac = fac; e.huntId = opts.huntId || null;
+  e.hostile = !!opts.hostile || REP[fac] <= -10 || (REP[fac] < 20 && Math.random() < 0.5);
+  if (!e.hostile){ e.ai.cruise = psi + (Math.random()<0.5 ? 1 : -1)*rnd(0.9, 1.6); e.psi = e.ai.cruise; }
+  var dirToWind = wrap(e.psi - W0.dir); if (Math.abs(dirToWind) < (POINT[c.set]+15)*DEG) e.psi = W0.dir + (dirToWind>=0?1:-1)*(POINT[c.set]+20)*DEG;
+  if (!e.hostile) e.ai.cruise = e.psi;
+  e.ammo = 'ball';
+  ENEMIES.push(e);
+  $('enemy').style.display = '';
+  if (e.hostile) toast((e.huntId ? 'Цель заказа: ' : 'На горизонте ') + c.name + ' (' + FACT[fac].n + ')! Заходите бортом.', true);
+  else toast('Мимо идёт ' + c.name + ' (' + FACT[fac].n + ', ' + repStatus(fac).toLowerCase() + ') — мирный. Нападёте — репутация упадёт.');
+  return e;
+}
+function onDefeat(e, kind){
+  var f = e.fac || e.c.fac;
+  var d = addRep(f, kind === 'sink' ? -25 : -15);
+  ENEMY_OF[f].forEach(function(x){ addRep(x, 10); });
+  var msg = FACT[f].n + ' ' + d + ' (' + repStatus(f) + ')';
+  if (e.c.spirit){
+    TROPHY.shards++; msg = 'Осколок духа ветра (' + TROPHY.shards + '/3). ' + msg;
+    if (TROPHY.shards >= 3 && !TROPHY.sylph){ TROPHY.sylph = true; TROPHY.shards -= 3; msg = 'Связан дух ветра! Кнопка «Дух ветра» справа. ' + msg; updAbility(); }
+  } else if (f === 'membrane'){
+    var free = P.c.cap - cargoUsed(P), n = Math.min(3, Math.max(0, free));
+    if (n > 0){ P.cargo.scale = (P.cargo.scale||0) + n; msg = 'Чешуя в трюм: +' + n + '. ' + msg; } else { gold += 300; msg = 'Чешуя (трюм полон, продали за 300). ' + msg; }
+    if (!TROPHY.gland && Math.random() < 0.4){ TROPHY.gland = true; msg = 'Огненная железа! Открыт заряд «Огонь». ' + msg; }
+  }
+  if (e.huntId){
+    var o = ORDERS.filter(function(q){ return q.id === e.huntId; })[0];
+    if (o){ gold += o.reward; if (o.fac !== 'neutral') addRep(o.fac, o.rep); ORDERS.splice(ORDERS.indexOf(o), 1); msg = 'Заказ выполнен: +' + o.reward + ' золота. ' + msg; }
+  }
+  return msg;
+}
+
+function aiThink(e, dt, W0){
+  var inp = e.inp;
+  if (e.sunk || e.surrendered){ inp.sail = 0; inp.rudder = 0; inp.oar = false; return; }
+  var c = e.c, g = c.guns;
+  var dx = P.x - e.x, dy = P.y - e.y, dist = Math.hypot(dx, dy);
+  var brg = Math.atan2(dx, -dy);
+  var desired;
+  if (!e.hostile) desired = e.ai.cruise;
+  else if (P.sunk) desired = W0.dir + Math.PI;
+  else if (dist > (c.set==='membrane' ? 0.45 : 0.75)*g.range) desired = brg;
+  else {
+    var a1 = brg + Math.PI/2, a2 = brg - Math.PI/2;
+    desired = Math.abs(wrap(a1 - e.psi)) < Math.abs(wrap(a2 - e.psi)) ? a1 : a2;
+    if (dist < (c.set==='membrane' ? 0.12 : 0.3)*g.range) desired = wrap(desired + (wrap(desired - brg) > 0 ? 0.35 : -0.35));
+  }
+  // ветер: не в мёртвую зону
+  var pt = (POINT[c.set] + 8)*DEG, rel = wrap(desired - W0.dir);
+  e.cd = (e.cd || 0) - dt;
+  if (e.hostile && !P.sunk && e.cd <= 0){
+    if (c.spirit && dist < 480){ P.stolen = { dir: P.psi, until: T + 14 }; e.cd = 45; toast('Сильф отнимает ветер! Отверните на 40°+ или идите на вёслах.', true); }
+    else if (c.set === 'membrane' && dist < 650 && dist > 220){ e.heatUntil = T + 15; e.cd = 40; toast('Дракониды разгоняются «Жаром крыльев»!', true); }
+  }
+  e.ai.tackT -= dt;
+  if (Math.abs(rel) < pt){
+    if (e.ai.tackT <= 0){ var cur = wrap(e.psi - W0.dir); e.ai.tack = cur >= 0 ? 1 : -1; if (Math.abs(rel) < pt*0.5) e.ai.tackT = 25; }
+    desired = W0.dir + e.ai.tack*pt;
+  }
+  // мели впереди
+  var fx = Math.sin(e.psi), fy = -Math.cos(e.psi);
+  for (var k=1;k<=3;k++){ var dd = depthAt(e.x + fx*c.L*2.5*k, e.y + fy*c.L*2.5*k); if (dd >= 0 && dd < c.draft + 1 || dd < 0){ desired = e.psi + 1.2; break; } }
+  var err = wrap(desired - e.psi);
+  inp.rudder = clamp(err/(22*DEG), -1, 1);
+  var lim = Math.min(c.capsize, c.flood);
+  inp.sail = e.heel > lim*0.8 ? 0.5 : (e.over ? 0.5 : 1);
+  if (c.oar && c.oar.cruise && (e.info.awa||0) < POINT[c.set] + 5){ inp.oar = true; } else inp.oar = false;
+  // выбор заряда и залп
+  if (P.sunk || !e.hostile) return;
+  if (c.spirit) e.ammo = 'gust';
+  else if (c.set === 'membrane') e.ammo = dist < g.range*0.42 ? 'fire' : 'fireball';
+  else e.ammo = dist < g.range*0.42 ? 'grape' : (P.sails > 0.55 && Math.hypot(P.vx,P.vy) > Math.hypot(e.vx,e.vy) ? 'chain' : 'ball');
+  var rx = Math.cos(e.psi), ry = Math.sin(e.psi);
+  ['L','R'].forEach(function(side){
+    var s = side==='L' ? -1 : 1;
+    var cosA = (dx*rx*s + dy*ry*s)/Math.max(1, dist);
+    if (cosA > Math.cos(16*DEG) && dist < g.range*AMMO[e.ammo].range*0.95) fire(e, side);
+  });
+}
+
+// ---------- Шаг мира ----------
+function step(dt){
+  T += dt;
+  updWind(dt);
+  var W0 = windNow(T);
+  var wdx=-Math.sin(W0.dir), wdy=Math.cos(W0.dir);
+  GUSTS.forEach(function(g){ g.x += wdx*W0.sp*0.5*dt; g.y += wdy*W0.sp*0.5*dt;
+    if (Math.hypot(g.x-P.x, g.y-P.y) > 1900){ var a=Math.random()*2*Math.PI; g.x=P.x-wdx*1500+Math.cos(a)*600; g.y=P.y-wdy*1500+Math.sin(a)*600; } });
+  physics(P, W0, dt);
+  for (var i=ENEMIES.length-1; i>=0; i--){
+    var e = ENEMIES[i];
+    e.ai.think -= dt; if (e.ai.think <= 0){ e.ai.think = 0.15; aiThink(e, 0.15, W0); }
+    physics(e, W0, dt);
+    if (e.sunk){ e.sinkT += dt; if (e.sinkT > 8) ENEMIES.splice(i,1); continue; }
+    if (e.surrendered && !P.sunk && Math.hypot(e.x-P.x, e.y-P.y) < (e.c.L + P.c.L)*0.6 + 6){
+      var g = 600 + Math.round(e.c.L*25); gold += g; kills++;
+      toast('Абордаж! Приз: +' + g + ' золота. ' + onDefeat(e, 'prize')); ENEMIES.splice(i,1);
+    }
+  }
+  if (P.sunk) P.sinkT += dt;
+  updBalls(dt);
+  PORTS.forEach(function(p){ GOODS.forEach(function(g){ p.sup[g.id] += (1 - p.sup[g.id])*Math.min(1, dt/240); }); });
+  P.nearPort = null; var pd = 1e9;
+  PORTS.forEach(function(p){ var d=Math.hypot(P.x-p.x, P.y-p.y); if (d<pd){ pd=d; P.nearPortAny=p; P.nearPortD=d; } if (d < 240) P.nearPort = p; });
+  for (var di=ENEMIES.length-1; di>=0; di--){ var de = ENEMIES[di]; if (!de.sunk && Math.hypot(de.x-P.x, de.y-P.y) > 2600){ ORDERS.forEach(function(o){ if (o.id === de.huntId){ o.spawned = false; o.spawnIn = 60; } }); ENEMIES.splice(di,1); } }
+  for (var oi=ORDERS.length-1; oi>=0; oi--){
+    var o = ORDERS[oi];
+    if (o.deadline && T > o.deadline){ delete P.cargo['o'+o.id]; ORDERS.splice(oi,1); addRep(o.fac, -10); toast('Заказ сорван: опоздали в ' + portName(o.to) + '. Репутация −10.', true); continue; }
+    if (o.type === 'hunt' && !o.spawned){ o.spawnIn -= dt; if (o.spawnIn <= 0 && pd > 500 && !P.sunk){ var he = spawnEnemy({ fac:o.target, hostile:true, huntId:o.id, far:true }); if (he) o.spawned = true; } }
+  }
+  var alive = ENEMIES.filter(function(e){ return !e.sunk; }).length;
+  if (!alive && pd > 900 && !P.sunk){ encT -= dt; if (encT <= 0){ encT = 420; if (Math.random() < 0.45){ spawnEnemy(); } } }
+  if (!ENEMIES.length) $('enemy').style.display='none';
+
+  for (var bi=0; bi<BARRELS.length; bi++){
+    var br=BARRELS[bi];
+    if (!P.sunk && Math.hypot(P.x-br.x, P.y-br.y) < 14 + P.c.L*0.5){
+      var gg = 50 + Math.round(Math.random()*10)*10; gold += gg; barrels++;
+      toast('+' + gg + ' золота'); sndHit('coin', P.x, P.y); var p=freeSpot(P.x, P.y, 1400); br.x=p.x; br.y=p.y;
+    }
+  }
+  if (race && !race.done){
+    var b = BUOYS[race.i];
+    if (Math.hypot(P.x-b.x, P.y-b.y) < 30 + P.c.L*0.5){
+      race.i++;
+      if (race.i>=BUOYS.length){ race.done=true; race.tEnd=T-race.t0; var rec=!best[P.c.id]||race.tEnd<best[P.c.id]; if(rec) best[P.c.id]=race.tEnd; toast('Финиш! ' + fmtTime(race.tEnd) + (rec?' — рекорд!':'')); }
+      else toast('Буй ' + race.i + ' из ' + BUOYS.length + ' пройден');
+    }
+  }
+}
+function fmtTime(s){ var m=Math.floor(s/60), r=Math.floor(s%60); return m+':'+(r<10?'0':'')+r; }
+
+// ---------- Отрисовка ----------
+var DPR = 1, Wd=0, Hd=0;
+function resize(){ DPR = Math.min(2, window.devicePixelRatio||1); Wd=innerWidth; Hd=innerHeight; cv.width=Wd*DPR; cv.height=Hd*DPR; }
+addEventListener('resize', resize); resize();
+var camZ = 2;
+
+function drawShip(sh, X, Y, zs){
+  var c = sh.c, info = sh.info;
+  var L = c.L*zs, B = c.B*zs*Math.max(0.55, Math.cos(sh.heel*DEG));
+  var alpha = sh.sunk ? Math.max(0, 1 - sh.sinkT/6) : 1;
+  if (sh.stolen && T < sh.stolen.until){ ctx.save(); ctx.translate(X,Y); ctx.rotate(T*1.5); ctx.strokeStyle='rgba(191,230,242,0.7)'; ctx.lineWidth=2; ctx.setLineDash([10,8]); ctx.beginPath(); ctx.arc(0,0,L*0.75+18,0,2*Math.PI); ctx.stroke(); ctx.setLineDash([]); ctx.restore(); }
+  if (c.spirit){ var gl = ctx.createRadialGradient(X,Y,0,X,Y,L*0.9); gl.addColorStop(0,'rgba(159,216,234,'+(0.45*alpha)+')'); gl.addColorStop(1,'rgba(159,216,234,0)'); ctx.fillStyle=gl; ctx.beginPath(); ctx.arc(X,Y,L*0.9,0,2*Math.PI); ctx.fill(); }
+  if (sh.heatUntil && T < sh.heatUntil){ ctx.strokeStyle='rgba(240,138,75,0.55)'; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(X,Y,L*0.7+10+Math.sin(T*8)*3,0,2*Math.PI); ctx.stroke(); }
+  ctx.save(); ctx.globalAlpha = alpha; ctx.translate(X,Y); ctx.rotate(sh.psi + (sh.sunk ? sh.sinkT*0.05 : 0));
+  ctx.fillStyle='rgba(8,24,36,0.35)'; ctx.beginPath(); ctx.ellipse(sh.sideSign*sh.heel*0.12*B, 2, B*0.6, L*0.5, 0, 0, 2*Math.PI); ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(0,-L/2); ctx.quadraticCurveTo(B/2, -L*0.25, B/2, L*0.15); ctx.lineTo(B*0.4, L/2); ctx.lineTo(-B*0.4, L/2); ctx.lineTo(-B/2, L*0.15); ctx.quadraticCurveTo(-B/2, -L*0.25, 0, -L/2);
+  ctx.fillStyle = sh.capsized ? '#3A2A20' : (c.spirit ? 'rgba(191,230,242,0.55)' : (sh.isPlayer ? '#7A4A2C' : '#5E3A2A')); ctx.fill();
+  ctx.lineWidth = Math.max(1.5, zs*0.25); ctx.strokeStyle = sh.isPlayer ? '#C8923E' : '#E06A4B'; ctx.stroke();
+  if (!sh.capsized){
+    ctx.fillStyle = sh.water > 0.3 ? 'rgba(40,90,120,'+(0.4+sh.water*0.5)+')' : '#9B6A40';
+    ctx.beginPath(); ctx.ellipse(0, L*0.05, B*0.32, L*0.36, 0, 0, 2*Math.PI); ctx.fill();
+    if (c.oar && sh.inp.oar){
+      ctx.strokeStyle='#C9A877'; ctx.lineWidth=Math.max(1.5, zs*0.3);
+      var ph = Math.sin(T*(sh.inp.sprint?9:5));
+      if (c.oar.kind==='yuloh'){ ctx.beginPath(); ctx.moveTo(0,L/2); ctx.lineTo(ph*B*0.6, L/2+B*1.1); ctx.stroke(); }
+      else if (c.oar.kind==='oars'){ for (var k=0;k<10;k++){ var yy=-L*0.22+k*L*0.05; ctx.beginPath(); ctx.moveTo(B/2,yy); ctx.lineTo(B/2+B*0.9, yy+ph*B*0.35); ctx.moveTo(-B/2,yy); ctx.lineTo(-B/2-B*0.9, yy+ph*B*0.35); ctx.stroke(); } }
+      else { ctx.fillStyle='rgba(159,216,234,0.5)'; ctx.beginPath(); ctx.ellipse(0, L*0.6, B*0.5, B*0.9, 0, 0, 2*Math.PI); ctx.fill(); }
+    }
+    var awaS = info.awaS||0, awa = info.awa||90, luff = info.luff && sh.inp.sail>0.05, rs = awaS>=0 ? 1 : -1;
+    var scol = SAILCOL[c.set];
+    c.sails.forEach(function(sl){
+      var y0 = -sl.x*L;
+      var len = Math.sqrt(sl.area)*zs*(sl.kind==='square'?1.05:0.95)*Math.max(0.25, sh.inp.sail);
+      ctx.lineCap='round';
+      ctx.globalAlpha = alpha*(0.35 + 0.65*sh.sails);
+      if (sl.kind==='square'){
+        var brace = Math.max(0, Math.min(55, 90 - awa*0.5))*DEG*rs;
+        ctx.save(); ctx.translate(0,y0); ctx.rotate(brace + (luff? Math.sin(T*20)*0.05:0));
+        ctx.strokeStyle='#5B3A22'; ctx.lineWidth=Math.max(2,zs*0.35); ctx.beginPath(); ctx.moveTo(-len/2,0); ctx.lineTo(len/2,0); ctx.stroke();
+        if (sh.inp.sail>0.02){ ctx.fillStyle = luff?'#C9BDA4':scol; ctx.beginPath(); ctx.moveTo(-len/2,0); ctx.quadraticCurveTo(0, luff?-2:-len*0.28, len/2,0); ctx.closePath(); ctx.fill(); }
+        ctx.restore();
+      } else {
+        var boom = Math.max(6, Math.min(85, awa*0.5))*DEG*rs;
+        ctx.save(); ctx.translate(0,y0); ctx.rotate(boom);
+        var bow = luff ? Math.sin(T*22)*len*0.08 : -rs*len*0.18;
+        if (sh.inp.sail>0.02){ ctx.fillStyle = luff?'#C9BDA4':scol; ctx.beginPath(); ctx.moveTo(0,0); ctx.quadraticCurveTo(bow, len*0.5, 0, len); ctx.lineTo(0,0); ctx.fill(); }
+        ctx.strokeStyle='#5B3A22'; ctx.lineWidth=Math.max(2,zs*0.3); ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,len); ctx.stroke();
+        ctx.restore();
+      }
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle='#3A2414'; ctx.beginPath(); ctx.arc(0,y0,Math.max(2,zs*0.35),0,2*Math.PI); ctx.fill();
+    });
+    if (sh.fire > 0.03){ var nf = 2 + Math.round(sh.fire*8); for (var fi=0; fi<nf; fi++){ var fy2 = (-0.4 + 0.8*((fi*0.618)%1))*L, fx2 = Math.sin(fi*2.3)*B*0.3; var fl = 3 + zs*0.6 + Math.sin(T*14+fi)*2; ctx.fillStyle = fi%2 ? 'rgba(255,200,80,0.9)' : 'rgba(240,110,50,0.85)'; ctx.beginPath(); ctx.arc(fx2, fy2, fl*(0.6+sh.fire), 0, 2*Math.PI); ctx.fill(); } }
+    if (sh.surrendered){ ctx.fillStyle='#F3EBDD'; ctx.fillRect(-2, -L*0.5-14, 12, 8); ctx.fillStyle='#3A2414'; ctx.fillRect(-3,-L*0.5-14,2,16); }
+  }
+  ctx.restore();
+}
+
+function draw(){
+  var c=P.c;
+  var targetZ = c.zoom*zoomMul;
+  var near = null, nd = 1e9;
+  ENEMIES.forEach(function(e){ if (!e.sunk){ var d=Math.hypot(e.x-P.x,e.y-P.y); if (d<nd){ nd=d; near=e; } } });
+  if (near && nd < 1100){ targetZ = Math.min(targetZ, Math.min(Wd,Hd)*0.42/Math.max(60, nd)); }
+  targetZ = Math.max(0.28, targetZ);
+  camZ += (targetZ - camZ)*0.04; var z = camZ;
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  ctx.fillStyle='#1C5874'; ctx.fillRect(0,0,Wd,Hd);
+  var cx=Wd/2, cy=Hd*0.52;
+  function sx(x){ return cx+(x-P.x)*z; } function sy(y){ return cy+(y-P.y)*z; }
+  var info = P.info, W = info.W || windNow(T);
+
+  ISL.forEach(function(I){
+    [[220,'#2B7090'],[120,'#3E8FA6'],[30,'#7FC0C4'],[0,'#C9B27C'],[-1,'#4E7A43']].forEach(function(L){
+      ctx.beginPath();
+      for (var i=0;i<=48;i++){ var a=i/48*2*Math.PI, R=L[0]<0 ? islR(I,a)*0.82 : islR(I,a)+L[0]; var px=sx(I.x+Math.cos(a)*R), py=sy(I.y+Math.sin(a)*R); if(i)ctx.lineTo(px,py); else ctx.moveTo(px,py); }
+      ctx.fillStyle=L[1]; ctx.fill();
+    });
+  });
+  var gs = z < 0.8 ? 92 : 46;
+  var gx0=Math.floor((P.x - Wd/2/z)/gs)*gs, gy0=Math.floor((P.y - Hd/2/z)/gs)*gs;
+  ctx.fillStyle='rgba(207,230,240,0.16)';
+  for (var gx=gx0; gx< P.x + Wd/2/z + gs; gx+=gs){
+    for (var gy=gy0; gy< P.y + Hd/2/z + gs; gy+=gs){
+      var h1=Math.abs(Math.sin(gx*12.9898+gy*78.233)*43758.5453)%1, h2=Math.abs(Math.sin(gx*39.346+gy*11.135)*24634.634)%1;
+      ctx.beginPath(); ctx.arc(sx(gx+h1*gs), sy(gy+h2*gs), Math.max(1.2, z*0.6), 0, 2*Math.PI); ctx.fill();
+    }
+  }
+  GUSTS.forEach(function(g){
+    var gr = ctx.createRadialGradient(sx(g.x),sy(g.y),0,sx(g.x),sy(g.y),g.r*z);
+    gr.addColorStop(0,'rgba(8,30,48,0.42)'); gr.addColorStop(1,'rgba(8,30,48,0)');
+    ctx.fillStyle=gr; ctx.beginPath(); ctx.arc(sx(g.x),sy(g.y),g.r*z,0,2*Math.PI); ctx.fill();
+  });
+  BARRELS.forEach(function(b){
+    var px=sx(b.x), py=sy(b.y); if (px<-20||px>Wd+20||py<-20||py>Hd+20) return;
+    var rr=Math.max(4, 1.2*z);
+    ctx.fillStyle='#8A5A34'; ctx.beginPath(); ctx.arc(px,py,rr,0,2*Math.PI); ctx.fill();
+    ctx.lineWidth=2; ctx.strokeStyle='#E0A84A'; ctx.stroke();
+  });
+  PORTS.forEach(function(p){
+    var X=sx(p.x), Y=sy(p.y); if (X<-300||X>Wd+300||Y<-300||Y>Hd+300) return;
+    var col = PORTCOL[p.fac], zz = Math.max(1, z);
+    ctx.fillStyle='#6E4227'; ctx.fillRect(X-4*zz, Y-150*z, 8*zz, 130*z);
+    ctx.fillStyle='#C8923E'; ctx.fillRect(X-30*z, Y-40*z, 60*z, Math.max(3, 10*z));
+    for (var hh=0; hh<4; hh++){ ctx.fillStyle = hh%2 ? '#B0563F' : '#E9DCC0'; ctx.fillRect(X-60*z + hh*30*z, Y-245*z, 22*z, 18*z); }
+    ctx.strokeStyle='#3A2414'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(X, Y-150*z); ctx.lineTo(X, Y-150*z-26); ctx.stroke();
+    ctx.fillStyle=col; ctx.fillRect(X, Y-150*z-26, 16, 10);
+    ctx.setLineDash([4,6]); ctx.strokeStyle='rgba(243,199,122,0.55)'; ctx.lineWidth=1.5; ctx.beginPath(); ctx.arc(X,Y,240*z,0,2*Math.PI); ctx.stroke(); ctx.setLineDash([]);
+    ctx.font='bold 14px Alegreya Sans, sans-serif'; ctx.textAlign='center'; ctx.fillStyle='#0F2233'; ctx.fillText(p.name, X+1, Y-150*z-33); ctx.fillStyle=col; ctx.fillText(p.name, X, Y-150*z-34); ctx.textAlign='start';
+  });
+  BUOYS.forEach(function(b,i){
+    var active = race && !race.done && race.i===i;
+    ctx.beginPath(); ctx.arc(sx(b.x),sy(b.y), Math.max(5, 3*z), 0, 2*Math.PI);
+    ctx.fillStyle = active ? '#F08A4B' : '#E9DCC0'; ctx.fill(); ctx.lineWidth=2; ctx.strokeStyle='#21140B'; ctx.stroke();
+    ctx.fillStyle='#F3EBDD'; ctx.font='12px Alegreya Sans, sans-serif'; ctx.fillText(String(i+1), sx(b.x)+8, sy(b.y)-8);
+  });
+
+  [P].concat(ENEMIES).forEach(function(sh){
+    var tr = sh.trail; if (tr.length<2) return;
+    for (var i=1;i<tr.length;i++){
+      var a=tr[i-1], b=tr[i], age=T-b.t;
+      ctx.strokeStyle='rgba(240,248,252,'+Math.max(0,0.5-age/40)+')'; ctx.lineWidth=Math.max(1.5, sh.c.B*z*0.5*(1-age/40));
+      ctx.beginPath(); ctx.moveTo(sx(a.x),sy(a.y)); ctx.lineTo(sx(b.x),sy(b.y)); ctx.stroke();
+    }
+  });
+
+  // сектора бортовых орудий игрока
+  if (ENEMIES.length && !P.sunk){
+    ['L','R'].forEach(function(side){
+      var s = side==='L' ? -1 : 1, ready = P.rel[side] >= 1;
+      var R = c.guns.range*AMMO[P.ammo].range*z;
+      var base = P.psi + s*Math.PI/2 - Math.PI/2;
+      ctx.fillStyle = ready ? 'rgba(243,199,122,0.13)' : 'rgba(169,184,198,0.07)';
+      ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,R, base - 16*DEG, base + 16*DEG); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = ready ? 'rgba(243,199,122,0.45)' : 'rgba(169,184,198,0.2)'; ctx.lineWidth=1; ctx.stroke();
+    });
+  }
+
+  // кольцо курсов
+  var zs = Math.max(z, 26/c.L);
+  var ringR = Math.max(56, c.L*zs*0.75 + 24);
+  for (var hdg=0; hdg<360; hdg+=4){
+    var twa = Math.abs((((hdg*DEG - W.dir)/DEG + 540)%360) - 180);
+    var co = wing(c.set, twa).d / WMAX[c.set];
+    ctx.strokeStyle = co < 0.15 ? 'rgba(240,138,75,0.7)' : (co < 0.6 ? 'rgba(224,168,74,0.65)' : 'rgba(123,196,140,0.7)');
+    ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(cx,cy,ringR,(hdg-92)*DEG,(hdg-88)*DEG); ctx.stroke();
+  }
+  var hx=Math.sin(P.psi), hy=-Math.cos(P.psi);
+  ctx.strokeStyle='#F3EBDD'; ctx.lineWidth=3;
+  ctx.beginPath(); ctx.moveTo(cx+hx*(ringR-10), cy+hy*(ringR-10)); ctx.lineTo(cx+hx*(ringR+12), cy+hy*(ringR+12)); ctx.stroke();
+  var vs=Math.hypot(P.vx,P.vy);
+  if (vs>0.2){ var tx=P.vx/vs, ty=P.vy/vs; ctx.setLineDash([5,5]); ctx.strokeStyle='#F3C77A'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(cx+tx*(ringR+12), cy+ty*(ringR+12)); ctx.stroke(); ctx.setLineDash([]); }
+
+  ENEMIES.forEach(function(e){ drawShip(e, sx(e.x), sy(e.y), Math.max(z, 26/e.c.L)); });
+  drawShip(P, cx, cy, zs);
+
+  BALLS.forEach(function(b){ if (b.delay>0) return; if (b.ammo==='fire'||b.ammo==='fireball'||b.ammo==='gust'){ ctx.fillStyle = AMMO[b.ammo].col; ctx.globalAlpha = 0.85; ctx.beginPath(); ctx.arc(sx(b.x), sy(b.y), b.ammo==='fire'?5:4, 0, 2*Math.PI); ctx.fill(); ctx.globalAlpha = 1; return; } ctx.fillStyle = AMMO[b.ammo].col; ctx.strokeStyle='rgba(243,235,221,0.8)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.arc(sx(b.x), sy(b.y), b.ammo==='grape'?2:3, 0, 2*Math.PI); ctx.fill(); ctx.stroke(); });
+  FX.forEach(function(f){
+    var k = f.t/f.life, X=sx(f.x), Y=sy(f.y);
+    if (f.type==='smoke'){ ctx.fillStyle='rgba(230,230,225,'+(0.55*(1-k))+')'; ctx.beginPath(); ctx.arc(X,Y, (f.r*z*0.5 + 4) * (1+k*2.5), 0, 2*Math.PI); ctx.fill(); }
+    else if (f.type==='splash'){ ctx.strokeStyle='rgba(235,248,252,'+(0.9*(1-k))+')'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(X,Y, 3 + k*14, 0, 2*Math.PI); ctx.stroke(); }
+    else { ctx.fillStyle='rgba(243,150,70,'+(0.9*(1-k))+')'; ctx.beginPath(); ctx.arc(X,Y, 3 + k*10, 0, 2*Math.PI); ctx.fill(); }
+  });
+
+  function edgeArrow(px,py,col){
+    if (px>=20&&px<=Wd-20&&py>=20&&py<=Hd-20) return;
+    var ang=Math.atan2(py-cy,px-cx), R=Math.min(Wd,Hd)*0.42;
+    ctx.save(); ctx.translate(cx+Math.cos(ang)*R, cy+Math.sin(ang)*R); ctx.rotate(ang); ctx.fillStyle=col;
+    ctx.beginPath(); ctx.moveTo(14,0); ctx.lineTo(-8,-9); ctx.lineTo(-8,9); ctx.closePath(); ctx.fill(); ctx.restore();
+  }
+  if (race && !race.done){ var bb=BUOYS[race.i]; edgeArrow(sx(bb.x), sy(bb.y), '#F08A4B'); }
+  ENEMIES.forEach(function(e){ if (!e.sunk) edgeArrow(sx(e.x), sy(e.y), '#E06A4B'); });
+  var np = P.nearPortAny; if (np && P.nearPortD < 3500) edgeArrow(sx(np.x), sy(np.y), PORTCOL[np.fac]);
+}
+
+// ---------- HUD ----------
+function courseName(twa){ if (twa<38) return 'левентик'; if (twa<70) return 'бейдевинд'; if (twa<110) return 'галфвинд'; if (twa<160) return 'бакштаг'; return 'фордевинд'; }
+function setBar(id, v, invert){ var el=$(id); el.style.width = Math.round(v*100)+'%'; if (!invert) el.style.background = v < 0.3 ? 'var(--bad)' : (v < 0.6 ? 'var(--brass)' : 'var(--good)'); }
+function hud(){
+  var c=P.c, info=P.info; if (!info.W) return;
+  var spd = Math.hypot(P.vx,P.vy);
+  $('spd').textContent = fmt(spd/KN);
+  var ratio = spd/Math.max(0.1, info.W.trueSp);
+  $('ftw').textContent = (ratio>1.02 ? 'быстрее ветра ×' + fmt(ratio) + ' ' : '') + (P.fast ? '⏩ ×3' : '');
+  $('gold').textContent = gold + ' зол. · трюм ' + cargoUsed(P) + '/' + c.cap;
+  if (ORDERS.length){ var o0 = ORDERS[0]; $('ordRow').style.display=''; $('ordTxt').textContent = 'Заказ: ' + (o0.type==='hunt' ? 'охота: ' + FACT[o0.target].n : '→ ' + portName(o0.to) + (o0.deadline ? ' · ' + gameMin(o0.deadline - T) : '')) + (ORDERS.length>1 ? ' (+' + (ORDERS.length-1) + ')' : ''); } else $('ordRow').style.display='none';
+  var bp = $('bPort');
+  if (P.nearPort && !P.sunk){ var slow = Math.hypot(P.vx,P.vy) < 2, closed = portClosed(P.nearPort); bp.style.display=''; bp.textContent = closed ? P.nearPort.name + ': порт закрыт' : (slow ? 'В порт: ' + P.nearPort.name : 'Сбавьте ход у порта'); bp.disabled = !slow || closed; } else bp.style.display='none';
+  var rel = (((P.psi - info.W.dir)/DEG % 360)+360)%360, twa = rel>180 ? 360-rel : rel;
+  $('course').textContent = courseName(twa) + ' ' + Math.round(twa) + '° · ' + (twa<5||twa>175 ? '—' : (rel<180 ? 'левый галс' : 'правый галс'));
+  var lw = Math.abs(info.u)>0.15 ? Math.round(Math.atan2(Math.abs(info.w), Math.abs(info.u))/DEG)+'°' : '—';
+  var d=P.lastDepth; $('depth').textContent = lw + ' · ' + (d<0?'берег':(d>=40?'>40':fmt(d))) + '/' + fmt(info.draft) + ' м';
+  $('depth').style.color = (d>=0 && d < info.draft+0.8) ? 'var(--warn)' : '';
+  var h=Math.round(P.heel); $('heel').textContent = h+'°';
+  var lim = Math.min(c.capsize, c.flood);
+  $('heel').style.color = h >= lim*0.75 ? 'var(--warn)' : '';
+  $('heelNeedle').setAttribute('transform','rotate('+(Math.min(80, P.heel)*P.sideSign)+' 32 30)');
+  var la=Math.min(80,lim)*DEG;
+  $('heelDanger').setAttribute('d','M'+(32+28*Math.sin(la)).toFixed(1)+' '+(30-28*Math.cos(la)).toFixed(1)+' A28 28 0 0 1 60 30 M4 30 A28 28 0 0 1 '+(32-28*Math.sin(la)).toFixed(1)+' '+(30-28*Math.cos(la)).toFixed(1));
+  setBar('pbH', P.hull); setBar('pbS', P.sails); setBar('pbC', P.crew); setBar('pbW', P.water, true); setBar('pbF', P.fire||0, true);
+  $('twArrow').setAttribute('transform','rotate('+(info.W.dir/DEG)+')');
+  $('shipMark').setAttribute('transform','rotate('+(P.psi/DEG)+')');
+  var bb = bftOf(info.W.trueSp); $('windTxt').textContent = bb + (bb===1?' балл':(bb<5&&bb>1?' балла':' баллов')) + (info.W.gust>1.15 ? ' · шквал' : '');
+  $('windMs').textContent = fmt(info.W.sp) + ' м/с';
+  if (c.oar && c.oar.sprint) $('stamI').style.width = P.stam+'%';
+  if (race){ $('race').style.display=''; $('race').textContent = race.done ? 'Финиш: ' + fmtTime(race.tEnd) : 'Гонка · буй ' + (race.i+1) + '/' + BUOYS.length + ' · ' + fmtTime(T-race.t0) + (best[c.id]?' · рекорд '+fmtTime(best[c.id]):''); }
+  var e = ENEMIES.filter(function(x){ return !x.sunk; })[0] || ENEMIES[0];
+  if (e){
+    $('eName').textContent = e.c.name + (e.surrendered ? ' · сдался' : (e.sunk ? ' · тонет' : (e.huntId ? ' · цель заказа' : (e.hostile ? ' · враг' : ' · мирный'))));
+    var de = Math.hypot(e.x-P.x, e.y-P.y);
+    var brg = wrap(Math.atan2(e.x-P.x, -(e.y-P.y)) - P.psi)/DEG;
+    var where = Math.abs(brg) < 30 ? 'по носу' : (Math.abs(brg) > 150 ? 'за кормой' : (brg < 0 ? 'слева' : 'справа'));
+    $('eDist').textContent = Math.round(de) + ' м · ' + where;
+    setBar('ebH', e.hull); setBar('ebS', e.sails); setBar('ebC', e.crew); setBar('ebW', e.water, true); setBar('ebF', e.fire||0, true);
+  }
+  updFireUI(); updAbility();
+}
+function updFireUI(){
+  if (!P) return;
+  ['L','R'].forEach(function(side){
+    var b = $(side==='L'?'fireL':'fireR'), v = Math.round(P.rel[side]*100);
+    b.style.background = v>=100 ? '#E0A84A' : 'linear-gradient(to right, #8A6A3A '+v+'%, #16314A '+v+'%)';
+    b.style.color = v>=100 ? '#1A1206' : '#F3EBDD';
+  });
+  $('bAmmo').textContent = AMMO[P.ammo].n;
+}
+
+// ---------- Управление ----------
+function setSailUI(){ var p=Math.round((P?P.inp.sail:1)*100); $('sailFill').style.height='calc('+p+'% - 12px)'; $('sailFill').style.display=p<3?'none':''; $('sailVal').textContent=p+'%'; $('sail').setAttribute('aria-valuenow',p); }
+function updBtns(){
+  if (!P) return;
+  $('bOar').classList.toggle('on', P.inp.oar); $('bOar').setAttribute('aria-pressed', P.inp.oar);
+  $('bSprint').disabled = !P.inp.oar;
+  $('bCb').textContent = P.inp.cbDown ? 'Шверт ↓' : 'Шверт ↑'; $('bCb').classList.toggle('on', P.inp.cbDown);
+  $('bShip').textContent = P.capsized ? 'На киль' : 'Корабль';
+  $('bShip').classList.toggle('primary', P.capsized);
+}
+var paintRudder = function(){};
+(function(){
+  var el=$('rudder'), knob=$('knob'), active=null;
+  function set(clientX){ var r=el.getBoundingClientRect(); P.inp.rudder=clamp((clientX-(r.left+r.width/2))/(r.width/2-30),-1,1); paint(); }
+  function paint(){ var v=P?P.inp.rudder:0; knob.style.transform='translateX('+(v*(el.clientWidth/2-36))+'px) rotate('+(v*120)+'deg)'; el.setAttribute('aria-valuenow', Math.round(v*100)); }
+  el.addEventListener('pointerdown', function(e){ if(!P) return; active=e.pointerId; el.setPointerCapture(e.pointerId); set(e.clientX); });
+  el.addEventListener('pointermove', function(e){ if (e.pointerId===active) set(e.clientX); });
+  function up(e){ if (e.pointerId===active){ active=null; P.inp.rudder=0; paint(); } }
+  el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
+  paintRudder = paint;
+})();
+(function(){
+  var el=$('sail'), active=null;
+  function set(clientY){ var r=el.getBoundingClientRect(); var v=clamp(1-(clientY-r.top-6)/(r.height-12),0,1); P.inp.sail=Math.round(v*4)/4; setSailUI(); }
+  el.addEventListener('pointerdown', function(e){ if(!P) return; active=e.pointerId; el.setPointerCapture(e.pointerId); set(e.clientY); });
+  el.addEventListener('pointermove', function(e){ if (e.pointerId===active) set(e.clientY); });
+  el.addEventListener('pointerup', function(){ active=null; }); el.addEventListener('pointercancel', function(){ active=null; });
+})();
+$('bOar').addEventListener('click', function(){ if(!P.c.oar) return; P.inp.oar=!P.inp.oar; if(!P.inp.oar) P.inp.sprint=false; updBtns(); });
+(function(){ var b=$('bSprint'); function on(e){ e.preventDefault(); if(P.inp.oar) P.inp.sprint=true; } function off(){ if(P) P.inp.sprint=false; }
+  b.addEventListener('pointerdown', on); b.addEventListener('pointerup', off); b.addEventListener('pointerleave', off); b.addEventListener('pointercancel', off); })();
+$('bCb').addEventListener('click', function(){ P.inp.cbDown=!P.inp.cbDown; updBtns(); toast(P.inp.cbDown ? 'Шверт опущен: меньше сноса, осадка 0,9 м.' : 'Шверт поднят: осадка 0,3 м, но сильно сносит.'); });
+$('bZoom').addEventListener('click', function(){ zoomMul = zoomMul===1 ? 0.5 : (zoomMul===0.5 ? 2 : 1); toast('Масштаб ×' + String(zoomMul).replace('.',',')); });
+$('bRace').addEventListener('click', function(){ if(!P) return; race={ i:0, t0:T, done:false }; toast('Гонка: обойдите буи 1→4 по порядку.'); });
+$('bFight').addEventListener('click', function(){ if (ENEMIES.filter(function(e){return !e.sunk;}).length >= 2){ toast('Хватит и двоих!'); return; } spawnEnemy({ hostile:true }); });
+$('bShip').addEventListener('click', function(){
+  if (P && P.capsized){ P.capsized=false; P.heel=0; P.vx=0; P.vy=0; P.inp.sail=0.25; setSailUI(); updBtns(); toast('Корабль на ровном киле. Паруса — 25%.'); return; }
+  refreshContinue(); $('pick').style.display='flex';
+});
+addEventListener('keydown', function(e){ if (!P) return; var k=e.key.toLowerCase(); if (k==='m'||k==='ь'){ if ($('mapov').style.display==='flex'){ $('bMapClose').click(); } else $('bMap').click(); } });
+$('fireL').addEventListener('click', function(){ if (!fire(P,'L')) toast('Левый борт ещё заряжается'); });
+$('fireR').addEventListener('click', function(){ if (!fire(P,'R')) toast('Правый борт ещё заряжается'); });
+$('bAmmo').addEventListener('click', function(){ var list = playerAmmo(); P.ammo = list[(list.indexOf(P.ammo)+1)%list.length]; updFireUI(); toast(P.ammo==='ball' ? 'Ядра: бьют корпус, делают течи. По духам ×1,5.' : (P.ammo==='chain' ? 'Книппели: рвут паруса, дальность ×0,75.' : (P.ammo==='grape' ? 'Картечь: выбивает команду, только вблизи.' : 'Огонь: поджигает, только вблизи (×0,4).'))); });
+function updAbility(){ var b = $('bSpirit'); b.style.display = TROPHY.sylph ? '' : 'none'; if (!P) return; var left = (P.spiritReady||0) - T; b.disabled = left > 0; b.textContent = left > 0 ? 'Дух ветра · ' + Math.ceil(left/GAME_SPEED) + 'с' : 'Дух ветра'; }
+$('bSpirit').addEventListener('click', function(){ if (!TROPHY.sylph || (P.spiritReady||0) > T) return; P.boost = { until: T + 15*GAME_SPEED/2.5 }; P.spiritReady = T + 60*GAME_SPEED/2.5; P.stolen = null; toast('Дух ветра дует вам в паруса с лучшего угла!'); updAbility(); });
+var lastBase = null;
+function showOver(t, p){ $('overT').textContent=t; $('overP').textContent=p + (career && loadSave() ? ' Карьера продолжится с последнего порта.' : ''); $('bAgain').textContent = career && loadSave() ? 'С последнего порта' : 'Ещё раз'; $('over').style.display='flex'; }
+$('bAgain').addEventListener('click', function(){ if (career){ if (!continueCareer()){ barrels=0; kills=0; resetCareer(); start(SHIPS[0], {gold:300}); } } else { barrels=0; kills=0; start(lastBase||SHIPS[0], {gold:3000}); } });
+$('bContinue').addEventListener('click', function(){ continueCareer(); });
+function refreshContinue(){ $('bContinue').style.display = loadSave() ? '' : 'none'; }
+refreshContinue();
+$('bOther').addEventListener('click', function(){ $('over').style.display='none'; refreshContinue(); $('pick').style.display='flex'; });
+
+addEventListener('keydown', function(e){
+  keys[e.key]=true; if (!P) return;
+  var k = e.key.toLowerCase();
+  if (k==='w'||k==='ц'){ P.inp.sail=Math.min(1,P.inp.sail+0.25); setSailUI(); }
+  if (k==='s'||k==='ы'){ P.inp.sail=Math.max(0,P.inp.sail-0.25); setSailUI(); }
+  if ((k==='r'||k==='к') && P.c.oar){ P.inp.oar=!P.inp.oar; updBtns(); }
+  if ((k==='c'||k==='с') && P.c.cb){ $('bCb').click(); }
+  if (k==='q'||k==='й'){ fire(P,'L'); }
+  if (k==='e'||k==='у'){ fire(P,'R'); }
+  if (k==='f'||k==='а'){ $('bAmmo').click(); }
+  if (e.key==='Shift' && P.inp.oar) P.inp.sprint=true;
+});
+addEventListener('keyup', function(e){ keys[e.key]=false; if (e.key==='Shift' && P) P.inp.sprint=false; });
+
+(function(){
+  var html='';
+  SHIPS.forEach(function(s,i){
+    html += '<div class="ship"><span class="tag" style="background:'+FACT[s.fac].col+'">'+FACT[s.fac].n+' · '+s.L+' м</span><h2 class="sc">'+s.name+'</h2><ul>'+s.notes.map(function(n){return '<li>'+n+'</li>';}).join('')+'</ul><button class="primary" data-i="'+i+'" style="margin-top:auto">На воду</button></div>';
+  });
+  $('cards').innerHTML = html;
+  $('cards').addEventListener('click', function(e){ var b=e.target.closest('button[data-i]'); if(b){ career=false; barrels=0; kills=0; lastBase=SHIPS[+b.getAttribute('data-i')]; start(lastBase, {gold:3000}); } });
+  $('bCareer').addEventListener('click', function(){ career=true; barrels=0; kills=0; lastBase=SHIPS[0]; resetCareer(); start(SHIPS[0], {gold:300, msg:'Карьера началась!'}); openPort(PORTS[0]); var td = null; try { td = localStorage.getItem('parusniki.tut'); } catch(e){} if (td !== 'done') tutStart(); });
+})();
+
+// ---------- Порт ----------
+function openPort(p, quiet){
+  if (!p || P.sunk) return;
+  if (portClosed(p)){ toast(p.name + ' закрыт для вас: ' + FACT[p.fac].n + ' считают вас врагом.', true); return; }
+  paused = true; curPort = p; P.vx = 0; P.vy = 0; P.om = 0; P.water = 0; P.leak = 0;
+  var done = [];
+  for (var i=ORDERS.length-1; i>=0; i--){
+    var o = ORDERS[i];
+    if (o.to === p.id){ gold += o.reward; if (o.fac !== 'neutral') addRep(o.fac, o.rep); delete P.cargo['o'+o.id]; done.push((o.type==='pass'?'Пассажир доставлен':'Груз доставлен') + ': +' + o.reward); ORDERS.splice(i,1); }
+  }
+  if (!p.board || T - (p.boardT||0) > 600) genBoard(p);
+  portTab = done.length ? 'orders' : 'market'; renderPort(); $('port').style.display = 'flex';
+  if (done.length) toast(done.join(' · '));
+  saveGame(p.id);
+}
+function genBoard(p){
+  p.board = []; p.boardT = T;
+  var others = PORTS.filter(function(q){ return q !== p; });
+  for (var i=0;i<3;i++){
+    var t = ['cargo','pass','hunt'][Math.floor(Math.random()*3)];
+    var to = others[Math.floor(Math.random()*others.length)], dist = Math.hypot(to.x-p.x, to.y-p.y);
+    var o = { id:ORDER_SEQ++, type:t, from:p.id, fac:p.fac, to:to.id };
+    if (t === 'cargo'){ o.units = Math.max(2, Math.round(P.c.cap*rnd(0.25,0.5))); o.reward = Math.round(dist*0.1 + o.units*15); o.time = Math.round(dist/1.6 + 200); o.rep = 12; }
+    else if (t === 'pass'){ o.units = 1; o.reward = Math.round(dist*0.06 + 40); o.rep = 8; }
+    else { var en = p.fac === 'neutral' ? FACS : ENEMY_OF[p.fac]; o.target = en[Math.floor(Math.random()*en.length)]; o.to = null; var tc = shipById(FAC_SHIP[o.target]); o.reward = 300 + tc.L*20; o.rep = 15; }
+    p.board.push(o);
+  }
+}
+function orderText(o){
+  if (o.type === 'cargo') return 'Доставка: ' + o.units + ' ед. груза в ' + portName(o.to);
+  if (o.type === 'pass') return 'Пассажир в ' + portName(o.to);
+  return 'Охота: ' + shipById(FAC_SHIP[o.target]).name + ' (' + FACT[o.target].n + ')';
+}
+function gameMin(sec){ return Math.max(0, Math.round(sec/60)) + ' мин'; }
+function bestLeaveHeading(){
+  var W0 = windNow(T), best = Math.PI, bv = -1;
+  for (var h = 100; h <= 260; h += 10){ var twa = Math.abs(wrap(h*DEG - W0.dir))/DEG; var v = wing(P.c.set, twa).d; if (v > bv){ bv = v; best = h*DEG; } }
+  return best;
+}
+function leavePort(){
+  $('port').style.display = 'none'; paused = false;
+  saveGame(curPort && curPort.id);
+  P.psi = bestLeaveHeading(); P.inp.sail = 0.5; setSailUI(); updBtns(); setShipLabels();
+  toast('Отдали швартовы. Уходите от берега на юг, потом выбирайте курс по ветру.');
+  curPort = null;
+}
+function goodById(id){ for (var i=0;i<GOODS.length;i++) if (GOODS[i].id===id) return GOODS[i]; }
+function portName(id){ for (var i=0;i<PORTS.length;i++) if (PORTS[i].id===id) return PORTS[i].name; }
+function renderPort(){
+  var p = curPort, c = P.c;
+  $('pName').textContent = p.name;
+  $('pFac').textContent = p.fac === 'neutral' ? 'нейтральный порт' : FACT[p.fac].n;
+  $('pGold').textContent = gold + ' золота';
+  Array.prototype.forEach.call(document.querySelectorAll('#port .tabs button'), function(b){ b.classList.toggle('on', b.getAttribute('data-tab')===portTab); b.setAttribute('aria-selected', b.getAttribute('data-tab')===portTab); });
+  var h = '';
+  var used = cargoUsed(P), load = used/c.cap;
+  if (portTab === 'market'){
+    h += '<div class="muted" style="font-size:13px;margin-bottom:6px">Трюм: <b style="color:var(--ink)">' + used + ' / ' + c.cap + '</b> · загрузка ' + Math.round(load*100) + '% — осадка +' + fmt(load*0.25*(c.draft||0.6)) + ' м, корабль тяжелее на ' + Math.round(load*50) + '%, зато устойчивее. Цена растёт, когда скупаете, и падает, когда заваливаете рынок.</div>';
+    h += '<table><thead><tr><th>Товар</th><th>Купить</th><th>Продать</th><th>В трюме</th><th></th></tr></thead><tbody>';
+    GOODS.forEach(function(g){
+      var b = priceBuy(p,g), sl = priceSell(p,g), have = P.cargo[g.id]||0;
+      var bc = b < g.base*0.8 ? 'good' : (b > g.base*1.25 ? 'bad' : ''), sc = sl > g.base*1.2 ? 'good' : (sl < g.base*0.7 ? 'bad' : '');
+      h += '<tr><td>' + g.n + '</td><td class="' + bc + '">' + b + '</td><td class="' + sc + '">' + sl + '</td><td>' + have + '</td><td style="white-space:nowrap;text-align:right">' +
+        '<button data-a="sellall" data-g="' + g.id + '"' + (have? '' : ' disabled') + '>Всё</button> ' +
+        '<button data-a="sell" data-g="' + g.id + '" aria-label="Продать 1"' + (have? '' : ' disabled') + '>−1</button> ' +
+        '<button data-a="buy" data-g="' + g.id + '" aria-label="Купить 1"' + (gold>=b && used<c.cap ? '' : ' disabled') + '>+1</button> ' +
+        '<button data-a="buy5" data-g="' + g.id + '" aria-label="Купить 5"' + (gold>=b && used<c.cap ? '' : ' disabled') + '>+5</button></td></tr>';
+    });
+    h += '</tbody></table>';
+  } else if (portTab === 'yard'){
+    var rc = Math.ceil((1-P.hull)*c.L*30 + (1-P.sails)*c.L*15);
+    h += '<div class="grid">';
+    h += '<div class="tile"><b>Ремонт</b><span class="muted">Корпус ' + Math.round(P.hull*100) + '% · паруса ' + Math.round(P.sails*100) + '%. Воду из трюма откачали.</span><button class="primary" data-a="repair"' + (rc>0 && gold>=rc ? '' : ' disabled') + '>' + (rc>0 ? 'Починить за ' + rc : 'Всё в порядке') + '</button></div>';
+    if (p.sells){
+      var ns = shipById(p.sells), trade = Math.round((c.price||0)*0.5), net = Math.round(ns.price*(REP[ns.fac]>=50?0.8:1)) - trade;
+      var same = c.id === ns.id, fits = used <= ns.cap;
+      h += '<div class="tile"><b class="sc">' + ns.name + '</b><span class="muted">' + FACT[ns.fac].n + ' · ' + ns.L + ' м · трюм ' + ns.cap + ' · ' + ns.guns.n + ' пушек на борт</span><span class="muted" style="font-size:13px">' + ns.notes.join('. ') + '.</span>' +
+        '<span>Цена ' + ns.price + (trade ? ' − ' + trade + ' за ваш корабль = <b>' + net + '</b>' : '') + '</span>' +
+        '<button class="primary" data-a="buyship"' + (!same && gold>=net && fits ? '' : ' disabled') + '>' + (same ? 'Уже ваш' : (!fits ? 'Сначала освободите трюм' : (gold>=net ? 'Купить' : 'Не хватает ' + (net-gold)))) + '</button></div>';
+    }
+    if (p.fac !== 'neutral' && p.fac !== c.set){
+      var sp = Math.round(Math.max(600, (c.price||600)*0.35)*(REP[p.fac]>=50?0.8:1));
+      var st = SETS[p.fac];
+      h += '<div class="tile"><b>Паруса: ' + st.name + '</b><span class="muted" style="font-size:13px">Ход круче ' + st.b0 + '° · качество ×' + fmt(st.CLmax/(st.CD0+st.k*st.CLmax*st.CLmax)) + ' · наполнение ' + fmt(st.fill) + ' с · порыв ×' + fmt(st.gust) + ' · предел ' + st.limitB + ' б.</span><span>На ваш корпус: ' + sp + '</span><button class="primary" data-a="sails" data-p="' + sp + '"' + (gold>=sp ? '' : ' disabled') + '>Поставить</button></div>';
+    }
+    if (p.fac === c.fac && c.set !== c.fac){
+      h += '<div class="tile"><b>Родные паруса</b><span class="muted">Вернуть ' + SETS[c.fac].name + '.</span><button data-a="sailsback">Вернуть за 200</button></div>';
+    }
+    h += '</div>';
+  } else if (portTab === 'orders'){
+    h += '<div class="muted" style="font-size:13px;margin-bottom:6px">Взято ' + ORDERS.length + ' из 3. Срок — в игровых минутах.</div>';
+    h += '<div class="grid">';
+    (p.board||[]).forEach(function(o, i){
+      var space = (o.units||0) <= c.cap - used;
+      var can = ORDERS.length < 3 && (o.type === 'hunt' || space) && !(o.to && portClosed(PORTS.filter(function(q){return q.id===o.to;})[0]));
+      h += '<div class="tile"><b>' + orderText(o) + '</b><span class="muted">' + (o.type==='hunt' ? 'Цель появится в море после выхода. Репутация: ' + FACT[o.target].n + ' −25' : (o.time ? 'Срок ' + gameMin(o.time) : 'Без срока')) + '</span><span>Награда <b>' + o.reward + '</b>' + (o.fac!=='neutral' ? ' · ' + FACT[o.fac].n + ' +' + o.rep : '') + '</span>' +
+        '<button class="primary" data-a="take" data-i="' + i + '"' + (can ? '' : ' disabled') + '>' + (can ? 'Взять' : (ORDERS.length>=3 ? 'Уже 3 заказа' : 'Нет места в трюме')) + '</button></div>';
+    });
+    if (!(p.board||[]).length) h += '<div class="tile muted">Заказов пока нет — загляните позже.</div>';
+    h += '</div>';
+    if (ORDERS.length){
+      h += '<div style="margin-top:10px;font-size:13px" class="muted">Ваши заказы:</div><table><tbody>';
+      ORDERS.forEach(function(o){ h += '<tr><td>' + orderText(o) + '</td><td>' + (o.deadline ? 'осталось ' + gameMin(o.deadline - T) : '') + '</td><td>' + o.reward + '</td></tr>'; });
+      h += '</tbody></table>';
+    }
+  } else {
+    var hc = Math.ceil((1-P.crew)*c.L*20);
+    h += '<div class="grid"><div class="tile"><b>Команда</b><span class="muted">Укомплектовано ' + Math.round(P.crew*100) + '%. От команды зависят перезарядка, паруса и вёсла.</span><button class="primary" data-a="hire"' + (hc>0 && gold>=hc ? '' : ' disabled') + '>' + (hc>0 ? 'Нанять за ' + hc : 'Все на местах') + '</button></div></div>';
+    h += '<div style="margin-top:10px;font-size:13px" class="muted">Репутация:</div><table><tbody>';
+    FACS.forEach(function(f){ var r = REP[f]; h += '<tr><td>' + FACT[f].n + '</td><td class="' + (r>=20?'good':(r<=-10?'bad':'')) + '">' + (r>0?'+':'') + r + ' · ' + repStatus(f) + '</td><td class="muted">' + (r<=-50?'порт закрыт':(r<=-10?'цены +15%':(r>=50?'цены −10%, корабли −20%':(r>=20?'цены −5%':'')))) + '</td></tr>'; });
+    h += '</tbody></table>';
+    h += '<div style="margin-top:10px;font-size:13px" class="muted">Слухи в таверне:</div><table><thead><tr><th>Товар</th><th>Дешевле всего</th><th>Дороже всего</th></tr></thead><tbody>';
+    GOODS.forEach(function(g){
+      var lo = null, hi = null;
+      PORTS.forEach(function(q){ var v = PORT_MUL[q.id][g.id]*q.sup[g.id]; if (!lo || v < lo.v) lo = {q:q, v:v}; if (!hi || v > hi.v) hi = {q:q, v:v}; });
+      h += '<tr><td>' + g.n + '</td><td class="good">' + lo.q.name + ' (~' + Math.round(g.base*lo.v) + ')</td><td class="bad">' + hi.q.name + ' (~' + Math.round(g.base*hi.v) + ')</td></tr>';
+    });
+    h += '</tbody></table>';
+  }
+  $('pBody').innerHTML = h;
+}
+$('pBody').addEventListener('click', function(e){
+  var b = e.target.closest('button[data-a]'); if (!b || b.disabled) return;
+  var a = b.getAttribute('data-a'), p = curPort, c = P.c, g = goodById(b.getAttribute('data-g'));
+  if (a==='buy' || a==='buy5'){
+    var n = a==='buy5' ? 5 : 1;
+    for (var i=0;i<n;i++){ var pr = priceBuy(p,g); if (gold < pr || cargoUsed(P) >= c.cap) break; gold -= pr; P.cargo[g.id] = (P.cargo[g.id]||0) + 1; p.sup[g.id] *= 1.03; turnover(p, pr); }
+  } else if (a==='sell' || a==='sellall'){
+    var k = a==='sellall' ? (P.cargo[g.id]||0) : 1;
+    for (var j=0;j<k;j++){ if (!(P.cargo[g.id]>0)) break; var ps = priceSell(p,g); gold += ps; P.cargo[g.id]--; p.sup[g.id] *= 0.97; turnover(p, ps); }
+  } else if (a==='repair'){
+    var rc = Math.ceil((1-P.hull)*c.L*30 + (1-P.sails)*c.L*15); if (gold >= rc){ gold -= rc; P.hull = 1; P.sails = 1; }
+  } else if (a==='hire'){
+    var hc = Math.ceil((1-P.crew)*c.L*20); if (gold >= hc){ gold -= hc; P.crew = 1; }
+  } else if (a==='buyship'){
+    var ns = shipById(p.sells), net = Math.round(ns.price*(REP[ns.fac]>=50?0.8:1)) - Math.round((c.price||0)*0.5);
+    if (gold >= net){
+      gold -= net;
+      var keep = { x:P.x, y:P.y, cargo:P.cargo };
+      P = newShip(Object.assign({}, ns), keep.x, keep.y, Math.PI, true); P.cargo = keep.cargo; P.inp.sail = 0.5;
+      setShipLabels(); updBtns(); setSailUI(); toast('Новый корабль: ' + ns.name + '!');
+    }
+  } else if (a==='sails'){
+    var sp = +b.getAttribute('data-p'); if (gold >= sp){ gold -= sp; c.set = p.fac; setShipLabels(); toast('Поставили паруса: ' + SETS[p.fac].name + '. Кольцо курсов изменилось.'); }
+  } else if (a==='take'){
+    var o = p.board[+b.getAttribute('data-i')];
+    if (o && ORDERS.length < 3){
+      if (o.type !== 'hunt'){ if ((o.units||0) > c.cap - cargoUsed(P)) return; P.cargo['o'+o.id] = o.units; if (o.time) o.deadline = T + o.time; }
+      else { o.spawned = false; o.spawnIn = 30; }
+      ORDERS.push(o); p.board.splice(p.board.indexOf(o), 1);
+      toast('Заказ взят: ' + orderText(o));
+    }
+  } else if (a==='sailsback'){
+    if (gold >= 200){ gold -= 200; c.set = c.fac; setShipLabels(); }
+  }
+  renderPort(); saveGame(p.id);
+});
+function turnover(p, v){ if (p.fac === 'neutral') return; p.turn = (p.turn||0) + v; while (p.turn >= 500){ p.turn -= 500; addRep(p.fac, 1); } }
+Array.prototype.forEach.call(document.querySelectorAll('#port .tabs button'), function(b){ b.addEventListener('click', function(){ portTab = b.getAttribute('data-tab'); renderPort(); }); });
+$('bLeave').addEventListener('click', leavePort);
+$('bPort').addEventListener('click', function(){ if (P.nearPort && Math.hypot(P.vx,P.vy) < 2) openPort(P.nearPort); });
+
+// ---------- Карта ----------
+function drawMap(){
+  var mc = $('mapcv'), m = mc.getContext('2d'), Wm = mc.width, Hm = mc.height;
+  var sc = Math.min(Wm, Hm) / (2*WORLD_R + 900), ox = Wm/2, oy = Hm/2;
+  function X(x){ return ox + x*sc; } function Y(y){ return oy + y*sc; }
+  m.fillStyle = '#1C5874'; m.fillRect(0,0,Wm,Hm);
+  m.strokeStyle = 'rgba(207,230,240,0.15)'; m.lineWidth = 1;
+  for (var g=-4000; g<=4000; g+=1000){ m.beginPath(); m.moveTo(X(g),0); m.lineTo(X(g),Hm); m.stroke(); m.beginPath(); m.moveTo(0,Y(g)); m.lineTo(Wm,Y(g)); m.stroke(); }
+  ISL.forEach(function(I){
+    [[120,'#3E8FA6'],[0,'#C9B27C'],[-1,'#4E7A43']].forEach(function(L){
+      m.beginPath(); for (var i=0;i<=36;i++){ var a=i/36*2*Math.PI, R=L[0]<0 ? islR(I,a)*0.82 : islR(I,a)+L[0]; var px=X(I.x+Math.cos(a)*R), py=Y(I.y+Math.sin(a)*R); if(i) m.lineTo(px,py); else m.moveTo(px,py); }
+      m.fillStyle = L[1]; m.fill();
+    });
+  });
+  PORTS.forEach(function(p){
+    m.fillStyle = PORTCOL[p.fac]; m.beginPath(); m.arc(X(p.x), Y(p.y), 9, 0, 2*Math.PI); m.fill();
+    m.strokeStyle = '#0F2233'; m.lineWidth = 3; m.stroke();
+    m.font = 'bold 22px Alegreya Sans, sans-serif'; m.textAlign = 'center'; m.fillStyle = '#0F2233'; m.fillText(p.name, X(p.x)+1, Y(p.y)+33); m.fillStyle = PORTCOL[p.fac]; m.fillText(p.name, X(p.x), Y(p.y)+32);
+  });
+  ORDERS.forEach(function(o){ if (!o.to) return; var q = PORTS.filter(function(x){ return x.id===o.to; })[0]; m.strokeStyle = '#F3C77A'; m.lineWidth = 3; m.setLineDash([8,6]); m.beginPath(); m.arc(X(q.x), Y(q.y), 22, 0, 2*Math.PI); m.stroke(); m.setLineDash([]); });
+  PORTS.forEach(function(q){ if (portClosed(q)){ m.strokeStyle = '#F08A4B'; m.lineWidth = 4; m.beginPath(); m.moveTo(X(q.x)-12,Y(q.y)-12); m.lineTo(X(q.x)+12,Y(q.y)+12); m.moveTo(X(q.x)+12,Y(q.y)-12); m.lineTo(X(q.x)-12,Y(q.y)+12); m.stroke(); } });
+  ENEMIES.forEach(function(e){ if (e.sunk) return; m.fillStyle = e.hostile ? '#F08A4B' : '#E9DCC0'; m.beginPath(); m.arc(X(e.x), Y(e.y), 7, 0, 2*Math.PI); m.fill(); });
+  m.save(); m.translate(X(P.x), Y(P.y)); m.rotate(P.psi); m.fillStyle = '#F3EBDD'; m.strokeStyle = '#0F2233'; m.lineWidth = 2;
+  m.beginPath(); m.moveTo(0,-16); m.lineTo(10,12); m.lineTo(0,6); m.lineTo(-10,12); m.closePath(); m.fill(); m.stroke(); m.restore();
+  m.textAlign = 'start'; m.font = '18px Alegreya Sans, sans-serif'; m.fillStyle = '#CFE6F0'; m.fillText('ветер ' + bftOf(WIND.sp) + ' б.   сетка 1 км', 46, 28);
+  m.save(); m.translate(24, 22); m.rotate(WIND.dir); m.strokeStyle = '#5FA9C4'; m.lineWidth = 4; m.beginPath(); m.moveTo(0,-14); m.lineTo(0,12); m.stroke(); m.fillStyle='#5FA9C4'; m.beginPath(); m.moveTo(-7,6); m.lineTo(0,16); m.lineTo(7,6); m.fill(); m.restore();
+}
+$('bMap').addEventListener('click', function(){ if (!P) return; TUT.data.map = true; paused = true; drawMap(); $('mapov').style.display = 'flex'; });
+$('bMapClose').addEventListener('click', function(){ $('mapov').style.display = 'none'; paused = !!curPort; });
+
+$('tl').addEventListener('click', function(){ var m = $('tlMore'), open = m.style.display === 'none'; m.style.display = open ? '' : 'none'; $('tl').setAttribute('aria-expanded', open); $('tlHint').textContent = open ? '▴' : '▾'; });
+$('bMenu').addEventListener('click', function(e){ var m = $('menu'), open = m.style.display !== 'flex'; m.style.display = open ? 'flex' : 'none'; $('bMenu').setAttribute('aria-expanded', open); });
+['bZoom','bRace','bShip'].forEach(function(id){ $(id).addEventListener('click', function(){ $('menu').style.display='none'; $('bMenu').setAttribute('aria-expanded', false); }); });
+
+// ---------- Звук (WebAudio, без файлов) ----------
+var SND = { on:true, ctx:null };
+try { SND.on = localStorage.getItem('parusniki.sound') !== 'off'; } catch(e){}
+function sndInit(){
+  if (SND.ctx || !SND.on) return;
+  try {
+    var A = window.AudioContext || window.webkitAudioContext; if (!A) return;
+    var c = SND.ctx = new A();
+    var len = c.sampleRate*2, buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
+    for (var i=0;i<len;i++) d[i] = Math.random()*2-1;
+    SND.noise = buf;
+    SND.master = c.createGain(); SND.master.gain.value = 0.8; SND.master.connect(c.destination);
+    function loop(type, freq, q){ var src = c.createBufferSource(); src.buffer = buf; src.loop = true; var f = c.createBiquadFilter(); f.type = type; f.frequency.value = freq; f.Q.value = q; var g = c.createGain(); g.gain.value = 0; src.connect(f); f.connect(g); g.connect(SND.master); src.start(); return { g:g, f:f }; }
+    SND.wind = loop('bandpass', 700, 0.6);
+    SND.water = loop('lowpass', 420, 0.7);
+    SND.fire = loop('bandpass', 2500, 1.2);
+  } catch(e){ SND.ctx = null; }
+}
+function sndUpdate(){
+  if (!SND.ctx || !P || !P.info.W) return;
+  var t = SND.ctx.currentTime, on = SND.on && !paused ? 1 : 0;
+  var aw = P.info.aSp || 0, v = Math.hypot(P.vx, P.vy);
+  SND.wind.g.gain.setTargetAtTime(on*Math.min(0.22, 0.012*aw + 0.01), t, 0.3);
+  SND.wind.f.frequency.setTargetAtTime(400 + aw*60, t, 0.5);
+  SND.water.g.gain.setTargetAtTime(on*Math.min(0.35, 0.05 + v*0.06), t, 0.3);
+  SND.fire.g.gain.setTargetAtTime(on*Math.min(0.15, (P.fire||0)*0.2)*(0.6+Math.random()*0.8), t, 0.05);
+}
+function sndHit(kind, x, y){
+  if (!SND.ctx || !SND.on || !P) return;
+  var dist = Math.hypot(x - P.x, y - P.y); if (dist > 1400) return;
+  var c = SND.ctx, t = c.currentTime, vol = Math.max(0.05, 1 - dist/1400);
+  var pan = c.createStereoPanner ? c.createStereoPanner() : null;
+  if (pan){ var rx = Math.cos(P.psi), ry = Math.sin(P.psi); pan.pan.value = clamp(((x-P.x)*rx + (y-P.y)*ry)/300, -1, 1); pan.connect(SND.master); }
+  var out = pan || SND.master;
+  var src = c.createBufferSource(); src.buffer = SND.noise; var f = c.createBiquadFilter(), g = c.createGain();
+  var cfgS = { boom:['lowpass',380,0.9,0.7], splash:['highpass',1400,0.25,0.35], crack:['bandpass',900,0.4,0.18], whoosh:['bandpass',1800,0.4,0.5], coin:null }[kind];
+  if (kind === 'coin'){ [880, 1320].forEach(function(fr, i){ var o = c.createOscillator(), og = c.createGain(); o.frequency.value = fr; og.gain.setValueAtTime(0.0001, t+i*0.08); og.gain.exponentialRampToValueAtTime(0.18, t+i*0.08+0.01); og.gain.exponentialRampToValueAtTime(0.0001, t+i*0.08+0.25); o.connect(og); og.connect(SND.master); o.start(t+i*0.08); o.stop(t+i*0.08+0.3); }); return; }
+  f.type = cfgS[0]; f.frequency.value = cfgS[1];
+  g.gain.setValueAtTime(cfgS[2]*vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + cfgS[3]);
+  src.connect(f); f.connect(g); g.connect(out); src.start(t, Math.random()); src.stop(t + cfgS[3] + 0.05);
+  if (kind === 'boom'){ var o = c.createOscillator(), og = c.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(90, t); o.frequency.exponentialRampToValueAtTime(35, t+0.4); og.gain.setValueAtTime(0.5*vol, t); og.gain.exponentialRampToValueAtTime(0.0001, t+0.5); o.connect(og); og.connect(out); o.start(t); o.stop(t+0.55); }
+}
+$('bSound').textContent = 'Звук: ' + (SND.on ? 'вкл' : 'выкл');
+$('bSound').addEventListener('click', function(){ SND.on = !SND.on; try { localStorage.setItem('parusniki.sound', SND.on ? 'on' : 'off'); } catch(e){} $('bSound').textContent = 'Звук: ' + (SND.on ? 'вкл' : 'выкл'); if (SND.on) sndInit(); });
+document.addEventListener('pointerdown', function(){ sndInit(); if (SND.ctx && SND.ctx.state === 'suspended') SND.ctx.resume(); }, true);
+
+// ---------- Обучение ----------
+var TUT = { step:-1, data:{} };
+var TUT_STEPS = [
+  { t:'Это порт. На вкладке «Рынок» купите ром (+5) — в Драконьем гнезде его берут втрое дороже. Затем «Выйти в море».', done:function(){ return !curPort && !paused; } },
+  { t:'Ветер — синяя стрелка на розе справа. Поднимите паруса: тяните правый ползунок вверх до 100%.', done:function(){ return P.inp.sail >= 0.75; } },
+  { t:'Рулите ползунком слева. Держите белую черту на ЗЕЛЁНОМ участке кольца вокруг корабля — так быстрее всего.', done:function(){ var w = P.info.W; if (!w) return false; var twa = Math.abs(wrap(P.psi - w.dir))/DEG; if (twa > 75 && twa < 150 && Math.hypot(P.vx,P.vy) > 1.2){ TUT.data.green = (TUT.data.green||0) + 1; } return TUT.data.green > 120; } },
+  { t:'Красное на кольце — мёртвая зона: прямо против ветра не пойти. Туда идут зигзагом — галсами. Поверните носом через ветер на другой галс.', done:function(){ var w = P.info.W; if (!w) return false; var side = wrap(P.psi - w.dir) > 0 ? 1 : -1; if (TUT.data.side == null) TUT.data.side = side; return side !== TUT.data.side && Math.hypot(P.vx,P.vy) > 0.6; } },
+  { t:'Цветная стрелка на краю экрана ведёт к ближайшему порту. Откройте «Карту» — там весь архипелаг и ваши заказы.', done:function(){ return TUT.data.map; } },
+  { t:'Бой: нажмите «Бой». Пушки стреляют только вбок — поставьте врага в светлый сектор у борта и жмите «Залп». Ядра — по корпусу, книппели — по парусам, картечь — по команде.', done:function(){ return TUT.data.fired; } }
+];
+function tutStart(){ TUT.step = 0; TUT.data = {}; tutShow(); }
+function tutShow(){
+  var el = $('tut');
+  if (TUT.step < 0){ el.style.display = 'none'; return; }
+  if (TUT.step >= TUT_STEPS.length){ $('tutN').textContent = 'Обучение пройдено'; $('tutT').textContent = 'Дальше сами: торгуйте, берите заказы на доске в порту, собирайте бочки, ищите сильфов и драконидов ради трофеев. Удачи, капитан!'; el.style.display = ''; setTimeout(function(){ if (TUT.step >= TUT_STEPS.length){ TUT.step = -1; el.style.display = 'none'; } }, 9000); try { localStorage.setItem('parusniki.tut', 'done'); } catch(e){} return; }
+  $('tutN').textContent = 'Обучение ' + (TUT.step+1) + '/' + TUT_STEPS.length; $('tutT').textContent = TUT_STEPS[TUT.step].t; el.style.display = '';
+}
+function tutTick(){ if (TUT.step < 0 || TUT.step >= TUT_STEPS.length || !P) return; if (TUT_STEPS[TUT.step].done()){ TUT.step++; TUT.data.green = 0; TUT.data.side = null; tutShow(); sndHit('coin', P.x, P.y); } }
+$('bTutSkip').addEventListener('click', function(){ TUT.step = -1; tutShow(); try { localStorage.setItem('parusniki.tut', 'done'); } catch(e){} });
+$('bTutAgain').addEventListener('click', function(){ $('menu').style.display='none'; tutStart(); if (!curPort) TUT.step = 1; tutShow(); });
+
+// ---------- Цикл ----------
+var last=performance.now(), keyRud=false;
+function loop(now){
+  var dt=Math.min(0.05,(now-last)/1000); last=now;
+  if (P){
+    var kr = (keys['ArrowLeft']||keys['a']||keys['A']||keys['ф']?-1:0) + (keys['ArrowRight']||keys['d']||keys['D']||keys['в']?1:0);
+    if (kr!==0){ P.inp.rudder=kr; paintRudder(); } else if (keyRud){ P.inp.rudder=0; paintRudder(); }
+    keyRud = kr!==0;
+    var near = ENEMIES.some(function(e){ return !e.sunk && Math.hypot(e.x-P.x,e.y-P.y) < 1500; });
+    var fast = !near && !(race && !race.done) && !(P.nearPortD < 450);
+    P.fast = fast;
+    if (!paused){ var n=fast?10:4; for (var i=0;i<n;i++) step(dt*GAME_SPEED*(fast?3:1)/n); }
+    draw(); hud(); sndUpdate(); tutTick();
+  } else { ctx.setTransform(DPR,0,0,DPR,0,0); ctx.fillStyle='#1C5874'; ctx.fillRect(0,0,Wd,Hd); }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+window.__T = { get TUT(){return TUT;}, tutStart:tutStart, tutTick:tutTick, leavePort:leavePort, get TROPHY(){return TROPHY;}, applyHit:applyHit,  openPort:openPort, genBoard:genBoard, PORTS:PORTS, get REP(){return REP;}, get ORDERS(){return ORDERS;}, saveGame:saveGame, continueCareer:continueCareer, resetCareer:resetCareer, setCareer:function(v){career=v;}, onDefeat:onDefeat, get gold(){return gold;},  start:start, step:step, SHIPS:SHIPS, spawnEnemy:spawnEnemy, fire:fire, get P(){return P;}, get E(){return ENEMIES;}, setW:function(i){ WIND.sp = WIND.tsp = [2.5,6.5,11.5][i]; WIND.dir = WIND.tdir = 0; WIND.next = 1e12; }, get T(){return T;} };
+})();
+</script>
+</body>
+</html>

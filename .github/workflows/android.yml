@@ -1,0 +1,87 @@
+name: Android APK
+
+on:
+  push:
+    branches: [main]
+    paths: ["godot/**", ".github/workflows/android.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  GODOT_VERSION: "4.3"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Кэш Godot и шаблонов экспорта
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/godot
+            ~/.local/share/godot/export_templates
+          key: godot-${{ env.GODOT_VERSION }}-android
+
+      - name: Скачать Godot и Android-шаблоны
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/godot && cd ~/godot
+          curl -sSL -o g.zip "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          unzip -q g.zip && rm g.zip
+          mv Godot_v${GODOT_VERSION}-stable_linux.x86_64 godot
+          curl -sSL -o t.tpz "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          D=~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
+          mkdir -p $D
+          unzip -o -j -q t.tpz templates/android_debug.apk templates/android_release.apk templates/version.txt -d $D
+          rm t.tpz
+          curl -sSL -o signer.jar https://github.com/patrickfav/uber-apk-signer/releases/download/v1.3.0/uber-apk-signer-1.3.0.jar
+
+      - name: Настроить редактор (APK без Gradle, подпись отдельно)
+        run: |
+          # Godot проверяет наличие SDK даже для неподписанного APK — достаточно пустой структуры.
+          mkdir -p ~/sdk/platform-tools ~/sdk/build-tools/34.0.0
+          printf '#!/bin/sh\nexit 0\n' > ~/sdk/build-tools/34.0.0/apksigner
+          printf '#!/bin/sh\nexit 0\n' > ~/sdk/platform-tools/adb
+          chmod +x ~/sdk/build-tools/34.0.0/apksigner ~/sdk/platform-tools/adb
+          ~/godot/godot --headless --path godot --import || true
+          S=$(ls ~/.config/godot/editor_settings-4*.tres | head -1)
+          if grep -q "android_sdk_path" "$S"; then
+            sed -i "s|export/android/android_sdk_path = .*|export/android/android_sdk_path = \"$HOME/sdk\"|" "$S"
+          else
+            printf 'export/android/android_sdk_path = "%s"\n' "$HOME/sdk" >> "$S"
+          fi
+
+      - name: Экспорт APK
+        run: |
+          mkdir -p godot/build
+          ~/godot/godot --headless --path godot --export-release "Android" build/unsigned.apk
+          test -f godot/build/unsigned.apk
+
+      - name: Подписать debug-ключом
+        run: |
+          java -jar ~/godot/signer.jar -a godot/build/unsigned.apk -o out
+          mv out/*-aligned-debugSigned.apk Parusniki.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Parusniki-apk
+          path: Parusniki.apk
+
+      - name: Выпуск для скачивания с телефона
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: Парусники · сборка ${{ github.run_number }}
+          body: "APK для Android: скачайте Parusniki.apk ниже и откройте на телефоне."
+          files: Parusniki.apk
+          make_latest: true
