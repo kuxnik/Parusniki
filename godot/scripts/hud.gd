@@ -19,6 +19,7 @@ var sail_lbl = Label.new()
 var oar_btn = Button.new()
 var right_btn = Button.new()
 var menu = PanelContainer.new()
+var top_panel = PanelContainer.new()
 var touches = {}   # index -> "rudder" / "sail"
 var rudder = 0.0
 var sail = 0.5
@@ -31,12 +32,10 @@ var bft = 3
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var top = PanelContainer.new()
-	top.position = Vector2(12, 12)
-	top.add_theme_stylebox_override("panel", _box(Color(0.07, 0.15, 0.23, 0.78)))
-	add_child(top)
+	top_panel.add_theme_stylebox_override("panel", _box(Color(0.07, 0.15, 0.23, 0.78)))
+	add_child(top_panel)
 	var vb = VBoxContainer.new()
-	top.add_child(vb)
+	top_panel.add_child(vb)
 	spd_lbl.add_theme_font_size_override("font_size", 30)
 	vb.add_child(spd_lbl)
 	info_lbl.add_theme_font_size_override("font_size", 15)
@@ -146,10 +145,19 @@ func _process(_dt: float) -> void:
 
 func _place() -> void:
 	var vp := get_viewport_rect().size
-	rose.position = Vector2(vp.x - 122, 12)
-	rudder_area.position = Vector2(16, vp.y - 112)
-	sail_area.position = Vector2(vp.x - 86, vp.y - 236)
-	oar_btn.position = Vector2(vp.x - 220, vp.y - 80)
+	# безопасная зона (вырез камеры, скругления), в координатах интерфейса
+	var safe := DisplayServer.get_display_safe_area()
+	var scr := DisplayServer.screen_get_size()
+	var k := vp.x / maxf(1.0, float(scr.x))
+	var top := maxf(0.0, safe.position.y * k)
+	var left := maxf(0.0, safe.position.x * k)
+	var right := maxf(0.0, (scr.x - safe.end.x) * k)
+	var bottom := maxf(0.0, (scr.y - safe.end.y) * k)
+	top_panel.position = Vector2(12 + left, 12 + top)
+	rose.position = Vector2(vp.x - 122 - right, 12 + top)
+	rudder_area.position = Vector2(16 + left, vp.y - 112 - bottom)
+	sail_area.position = Vector2(vp.x - 86 - right, vp.y - 236 - bottom)
+	oar_btn.position = Vector2(vp.x - 220 - right, vp.y - 80 - bottom)
 	right_btn.position = Vector2(vp.x / 2.0 - 80, vp.y - 170)
 	toast_lbl.position = Vector2(vp.x / 2.0 - 300, 16)
 	menu.position = (vp - menu.size) / 2.0

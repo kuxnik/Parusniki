@@ -247,7 +247,7 @@ func update_env(t: float, tt: float, cam_pos: Vector3, amp: float, player_pos: V
 	sky_mat.sky_horizon_color = hor
 	sky_mat.ground_horizon_color = hor
 	env.fog_light_color = hor
-	env.fog_density = lerpf(0.0007, 0.00032, day)
+	env.fog_density = lerpf(0.0006, 0.00022, day)
 	env.ambient_light_energy = 0.25 + 0.6 * day
 	var az = TAU * tod + 0.7
 	sun.rotation = Vector3(-asin(clampf(el, -1.0, 1.0)), az, 0)

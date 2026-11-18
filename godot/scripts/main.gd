@@ -77,11 +77,29 @@ func _make_particles() -> void:
 	for p in [wake, spray]:
 		if p:
 			p.queue_free()
-	var foam = ShipView.mat(Color(0.95, 0.98, 1.0), true, true, 0.32)
-	var foam_b = ShipView.mat(Color(0.95, 0.98, 1.0), true, true, 0.6).duplicate()
+	var gt = GradientTexture2D.new()
+	gt.fill = GradientTexture2D.FILL_RADIAL
+	gt.fill_from = Vector2(0.5, 0.5)
+	gt.fill_to = Vector2(1.0, 0.5)
+	gt.width = 64
+	gt.height = 64
+	var gr = Gradient.new()
+	gr.set_color(0, Color(1, 1, 1, 1))
+	gr.set_color(1, Color(1, 1, 1, 0))
+	gt.gradient = gr
+	var foam = StandardMaterial3D.new()
+	foam.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	foam.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	foam.albedo_texture = gt
+	foam.albedo_color = Color(0.95, 0.98, 1.0, 0.35)
+	foam.cull_mode = BaseMaterial3D.CULL_DISABLED
+	foam.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+	foam.vertex_color_use_as_albedo = true
+	var foam_b = foam.duplicate()
+	foam_b.albedo_color = Color(0.95, 0.98, 1.0, 0.7)
 	foam_b.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
 	wake = CPUParticles3D.new()
-	wake.amount = 120
+	wake.amount = 90
 	wake.lifetime = 5.0
 	wake.local_coords = false
 	var qm = PlaneMesh.new()
@@ -96,9 +114,13 @@ func _make_particles() -> void:
 	wake.scale_amount_min = 0.6
 	wake.scale_amount_max = 2.0
 	var cr = Curve.new()
-	cr.add_point(Vector2(0, 0.6))
-	cr.add_point(Vector2(1, 3.0))
+	cr.add_point(Vector2(0, 0.5))
+	cr.add_point(Vector2(1, 2.6))
 	wake.scale_amount_curve = cr
+	var ramp = Gradient.new()
+	ramp.set_color(0, Color(1, 1, 1, 1))
+	ramp.set_color(1, Color(1, 1, 1, 0))
+	wake.color_ramp = ramp
 	add_child(wake)
 	spray = CPUParticles3D.new()
 	spray.amount = 90
@@ -113,6 +135,10 @@ func _make_particles() -> void:
 	spray.gravity = Vector3(0, -9.8, 0)
 	spray.initial_velocity_min = 2.0
 	spray.initial_velocity_max = 6.0
+	var ramp2 = Gradient.new()
+	ramp2.set_color(0, Color(1, 1, 1, 1))
+	ramp2.set_color(1, Color(1, 1, 1, 0))
+	spray.color_ramp = ramp2
 	add_child(spray)
 
 
@@ -191,6 +217,13 @@ func _update_particles(tt: float, amp: float) -> void:
 
 
 func _update_camera(dt: float) -> void:
+	var vs := get_viewport().get_visible_rect().size
+	if vs.y > vs.x:
+		cam.keep_aspect = Camera3D.KEEP_WIDTH
+		cam.fov = 62
+	else:
+		cam.keep_aspect = Camera3D.KEEP_HEIGHT
+		cam.fov = 55
 	var yaw = sim.psi + cam_yaw
 	var f = Vector3(sin(yaw), 0, -cos(yaw))
 	var target = view.position - f * cam_dist + Vector3(0, cam_dist * 0.32 + 4.0, 0)
