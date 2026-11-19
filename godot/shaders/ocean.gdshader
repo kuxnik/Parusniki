@@ -11,16 +11,17 @@ uniform vec3 mid_col : source_color = vec3(0.08, 0.33, 0.46);
 uniform vec3 shallow_col : source_color = vec3(0.30, 0.72, 0.74);
 uniform vec3 foam_col : source_color = vec3(0.92, 0.97, 1.0);
 uniform float night = 0.0;
+uniform vec3 haze_col : source_color = vec3(0.78, 0.87, 0.91);
 
-varying vec3 wpos;
+varying highp vec3 wpos;
 varying float crest;
 
-float wave(vec2 p, float t) {
+float wave(highp vec2 p, highp float t) {
 	return amp * (0.6 * sin(0.021 * p.x + t * 1.1) + 0.4 * sin(0.033 * p.y - t * 0.9) + 0.25 * sin(0.05 * (p.x + p.y) + t * 1.7));
 }
 
 void vertex() {
-	vec3 w = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	highp vec3 w = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	float h = wave(w.xz, wtime);
 	VERTEX.y += h;
 	float e = 2.0;
@@ -46,8 +47,10 @@ void fragment() {
 	col += crest * 0.18;
 	col = mix(col, foam_col, foam * 0.55);
 	col *= mix(1.0, 0.62, night);
+	highp float dist = length(wpos.xz - CAMERA_POSITION_WORLD.xz);
+	col = mix(col, haze_col, smoothstep(700.0, 2200.0, dist) * 0.75);
 	ALBEDO = col;
-	ROUGHNESS = 0.32;
+	ROUGHNESS = 0.55;
 	METALLIC = 0.0;
-	SPECULAR = 0.35;
+	SPECULAR = 0.12;
 }

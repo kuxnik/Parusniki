@@ -40,7 +40,7 @@ func _build_env() -> void:
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
 	env.ambient_light_energy = 0.8
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	env.fog_enabled = true
+	env.fog_enabled = false  # на части Android-магнитол туман заливает весь экран
 	env.fog_light_color = Color("#C6DDE8")
 	env.fog_density = 0.00032
 	env.fog_sky_affect = 0.0
@@ -247,7 +247,6 @@ func update_env(t: float, tt: float, cam_pos: Vector3, amp: float, player_pos: V
 	sky_mat.sky_horizon_color = hor
 	sky_mat.ground_horizon_color = hor
 	env.fog_light_color = hor
-	env.fog_density = lerpf(0.0006, 0.00022, day)
 	env.ambient_light_energy = 0.5 + 0.35 * day
 	var az = TAU * tod + 0.7
 	sun.rotation = Vector3(-asin(clampf(el, -1.0, 1.0)), az, 0)
@@ -263,6 +262,7 @@ func update_env(t: float, tt: float, cam_pos: Vector3, amp: float, player_pos: V
 	ocean_mat.set_shader_parameter("amp", amp)
 	ocean_mat.set_shader_parameter("wtime", tt)
 	ocean_mat.set_shader_parameter("night", 1.0 - day)
+	ocean_mat.set_shader_parameter("haze_col", hor)
 
 
 static func clock_str(t: float) -> String:
