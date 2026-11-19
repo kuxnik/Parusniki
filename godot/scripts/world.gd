@@ -12,6 +12,9 @@ var sun: DirectionalLight3D
 var moon: DirectionalLight3D
 var lamp: OmniLight3D
 var port_lights: Array = []
+var simple_mat: StandardMaterial3D
+var shallows: MeshInstance3D
+var simple := false
 
 
 func build() -> void:
@@ -82,6 +85,53 @@ func _build_ocean() -> void:
 	ocean.material_override = ocean_mat
 	ocean.extra_cull_margin = 50.0
 	add_child(ocean)
+	simple_mat = StandardMaterial3D.new()
+	simple_mat.albedo_color = Color("#1F6A8C")
+	simple_mat.roughness = 0.7
+	simple_mat.metallic_specular = 0.2
+	# отмели вокруг островов — обычная геометрия, работает в любом режиме
+	var st = SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for isl in GameData.islands:
+		var seg = 32
+		for i in seg:
+			var a0 = TAU * float(i) / seg
+			var a1 = TAU * float(i + 1) / seg
+			var r0a = GameData.isl_r(isl, a0)
+			var r0b = GameData.isl_r(isl, a1)
+			var p = []
+			for rr in [[r0a, r0b, 0.98], [r0a + 220.0, r0b + 220.0, 0.0]]:
+				p.append(Vector3(isl["x"] + cos(a0) * rr[0], 0.0, isl["y"] + sin(a0) * rr[0]))
+				p.append(Vector3(isl["x"] + cos(a1) * rr[1], 0.0, isl["y"] + sin(a1) * rr[1]))
+			var cin = Color(0.35, 0.8, 0.8, 0.55)
+			var cout = Color(0.35, 0.8, 0.8, 0.0)
+			st.set_color(cin); st.add_vertex(p[0])
+			st.set_color(cout); st.add_vertex(p[2])
+			st.set_color(cin); st.add_vertex(p[1])
+			st.set_color(cin); st.add_vertex(p[1])
+			st.set_color(cout); st.add_vertex(p[2])
+			st.set_color(cout); st.add_vertex(p[3])
+	shallows = MeshInstance3D.new()
+	shallows.mesh = st.commit()
+	var sm = StandardMaterial3D.new()
+	sm.vertex_color_use_as_albedo = true
+	sm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	sm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	sm.cull_mode = BaseMaterial3D.CULL_DISABLED
+	shallows.material_override = sm
+	shallows.position.y = 0.9
+	shallows.visible = false
+	add_child(shallows)
+
+
+## Простая графика: обычный материал вместо шейдера воды (для слабых видеочипов магнитол).
+func set_simple(on: bool) -> void:
+	simple = on
+	ocean.material_override = simple_mat if on else ocean_mat
+	var pm: PlaneMesh = ocean.mesh
+	pm.subdivide_width = 4 if on else 110
+	pm.subdivide_depth = 4 if on else 110
+	shallows.visible = on
 
 
 func _island_mesh(isl: Dictionary) -> MeshInstance3D:
@@ -259,6 +309,8 @@ func update_env(t: float, tt: float, cam_pos: Vector3, amp: float, player_pos: V
 	for l in port_lights:
 		l.light_energy = 1.2 * clampf(1.0 - day * 1.6, 0.0, 1.0)
 	ocean.position = Vector3(snappedf(cam_pos.x, 40.0), 0, snappedf(cam_pos.z, 40.0))
+	if simple:
+		simple_mat.albedo_color = Color("#1F6A8C").lerp(Color("#0E2A45"), 1.0 - day)
 	ocean_mat.set_shader_parameter("amp", amp)
 	ocean_mat.set_shader_parameter("wtime", tt)
 	ocean_mat.set_shader_parameter("night", 1.0 - day)

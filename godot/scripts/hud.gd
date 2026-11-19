@@ -5,6 +5,9 @@ extends Control
 signal ship_chosen(id: String)
 signal oar_toggled
 signal right_ship
+signal graphics_toggled(simple: bool)
+var gfx_btn = Button.new()
+var simple_gfx := false
 
 var main  # ссылка на Main
 var spd_lbl = Label.new()
@@ -131,6 +134,15 @@ func _build_menu() -> void:
 		b.add_theme_font_size_override("font_size", 20)
 		b.pressed.connect(_choose.bind(String(s["id"])))
 		vb.add_child(b)
+	gfx_btn.custom_minimum_size = Vector2(460, 46)
+	gfx_btn.add_theme_font_size_override("font_size", 17)
+	gfx_btn.pressed.connect(_toggle_gfx)
+	vb.add_child(gfx_btn)
+	var gpu = Label.new()
+	gpu.text = "Видеочип: %s · %s" % [RenderingServer.get_video_adapter_name(), RenderingServer.get_video_adapter_vendor()]
+	gpu.add_theme_font_size_override("font_size", 13)
+	gpu.modulate = Color("#7F8C99")
+	vb.add_child(gpu)
 	var h = Label.new()
 	h.text = "Руль — тяните ручку влево-вправо. Паруса — ползунок справа.\nКлавиатура: ← → руль, W/S паруса, R вёсла."
 	h.add_theme_font_size_override("font_size", 15)
@@ -161,6 +173,16 @@ func _place() -> void:
 	right_btn.position = Vector2(vp.x / 2.0 - 80, vp.y - 170)
 	toast_lbl.position = Vector2(vp.x / 2.0 - 300, 16)
 	menu.position = (vp - menu.size) / 2.0
+
+
+func set_gfx_label() -> void:
+	gfx_btn.text = "Графика: простая (для магнитол)" if simple_gfx else "Графика: полная"
+
+
+func _toggle_gfx() -> void:
+	simple_gfx = not simple_gfx
+	set_gfx_label()
+	graphics_toggled.emit(simple_gfx)
 
 
 func _choose(id: String) -> void:
@@ -241,7 +263,7 @@ func update_hud(dt: float, sim: ShipSim, wsp: float, wdir: float, clock: String)
 	var kn = sim.speed() / GameData.KN
 	spd_lbl.text = "%.1f уз" % kn
 	bft = GameData.bft_of(wsp)
-	info_lbl.text = "крен %d°  ·  %d балл.  ·  %s" % [int(sim.heel), bft, clock]
+	info_lbl.text = "крен %d°  ·  %d балл.  ·  %s  ·  %d fps" % [int(sim.heel), bft, clock, Engine.get_frames_per_second()]
 	wind_dir = wdir
 	ship_psi = sim.psi
 	rose.queue_redraw()

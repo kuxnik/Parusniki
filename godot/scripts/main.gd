@@ -33,14 +33,31 @@ func _ready() -> void:
 	hud.ship_chosen.connect(_start)
 	hud.oar_toggled.connect(_on_oar)
 	hud.right_ship.connect(_on_right)
+	hud.graphics_toggled.connect(_on_gfx)
+	var cfg = ConfigFile.new()
+	var simple = false
+	if cfg.load("user://settings.cfg") == OK:
+		simple = cfg.get_value("gfx", "simple", false)
+	hud.simple_gfx = simple
+	hud.set_gfx_label()
+	world.set_simple(simple)
 	_pick_wind(true)
 	var args = OS.get_cmdline_user_args()
 	if args.has("--autotest"):
 		_autotest = true
+		if args.has("--simple"):
+			world.set_simple(true)
 		if args.has("--night"):
 			game_t = World.DAY_LEN * 0.62
 		_start(args[args.find("--autotest") + 1] if args.size() > args.find("--autotest") + 1 else "bark")
 		hud.menu.visible = false
+
+
+func _on_gfx(simple: bool) -> void:
+	world.set_simple(simple)
+	var cfg = ConfigFile.new()
+	cfg.set_value("gfx", "simple", simple)
+	cfg.save("user://settings.cfg")
 
 
 func _on_oar() -> void:
