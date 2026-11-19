@@ -241,20 +241,20 @@ func update_env(t: float, tt: float, cam_pos: Vector3, amp: float, player_pos: V
 	var el = sin(TAU * (tod - 0.25))
 	var day = clampf(el * 3.0 + 0.35, 0.0, 1.0)
 	var dusk = clampf(1.0 - absf(el) * 4.0, 0.0, 1.0)
-	var top = Color("#050B1C").lerp(Color("#4F93C8"), day).lerp(Color("#3D5A8C"), dusk * 0.6)
-	var hor = Color("#16233D").lerp(Color("#C6DDE8"), day).lerp(Color("#F2A36B"), dusk * 0.75)
+	var top = Color("#0E1F45").lerp(Color("#4F93C8"), day).lerp(Color("#3D5A8C"), dusk * 0.6)
+	var hor = Color("#2E4570").lerp(Color("#C6DDE8"), day).lerp(Color("#F2A36B"), dusk * 0.75)
 	sky_mat.sky_top_color = top
 	sky_mat.sky_horizon_color = hor
 	sky_mat.ground_horizon_color = hor
 	env.fog_light_color = hor
 	env.fog_density = lerpf(0.0006, 0.00022, day)
-	env.ambient_light_energy = 0.25 + 0.6 * day
+	env.ambient_light_energy = 0.5 + 0.35 * day
 	var az = TAU * tod + 0.7
 	sun.rotation = Vector3(-asin(clampf(el, -1.0, 1.0)), az, 0)
 	sun.light_energy = maxf(0.0, 1.1 * day)
 	sun.light_color = Color("#FFF1D6").lerp(Color("#FF9A5A"), dusk)
 	moon.rotation = Vector3(-0.9, az + PI, 0)
-	moon.light_energy = 0.25 * (1.0 - day)
+	moon.light_energy = 0.5 * (1.0 - day)
 	lamp.light_energy = 1.6 * clampf(1.0 - day * 1.5, 0.0, 1.0)
 	lamp.position = player_pos + Vector3(0, 8, 0)
 	for l in port_lights:

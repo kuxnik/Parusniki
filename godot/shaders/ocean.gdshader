@@ -45,7 +45,7 @@ void fragment() {
 	col = mix(col, shallow_col, shallow * shallow);
 	col += crest * 0.18;
 	col = mix(col, foam_col, foam * 0.55);
-	col *= mix(1.0, 0.45, night);
+	col *= mix(1.0, 0.62, night);
 	ALBEDO = col;
 	ROUGHNESS = 0.32;
 	METALLIC = 0.0;
