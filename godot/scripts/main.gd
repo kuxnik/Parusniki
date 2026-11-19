@@ -9,6 +9,8 @@ var view: ShipView
 var game_t = 0.0          # игровое время (как T в прототипе)
 var wind = {"dir": 0.0, "sp": 7.0, "tdir": 0.0, "tsp": 7.0, "next": 0.0}
 var wake: CPUParticles3D
+var ribbon := MeshInstance3D.new()
+var ribbon_mat: StandardMaterial3D
 var spray: CPUParticles3D
 var cam_dist = 40.0
 var cam_yaw = 0.0
@@ -216,20 +218,71 @@ var _autotest := false
 var _frames := 0
 
 
+func _update_ribbon(amp: float) -> void:
+	if not ribbon.is_inside_tree():
+		ribbon_mat = StandardMaterial3D.new()
+		ribbon_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		ribbon_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		ribbon_mat.vertex_color_use_as_albedo = true
+		ribbon_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+		ribbon_mat.no_depth_test = false
+		ribbon.material_override = ribbon_mat
+		add_child(ribbon)
+	var fwd = Vector2(sin(sim.psi), -cos(sim.psi))
+	var pts: Array = sim.trail.slice(maxi(0, sim.trail.size() - 40))
+	pts.append(Vector2(sim.x, sim.y) - fwd * float(sim.c["L"]) * 0.45)
+	var n = pts.size()
+	if n < 2:
+		ribbon.visible = false
+		return
+	ribbon.visible = true
+	var spd = clampf(sim.speed() / 4.0, 0.0, 1.0)
+	var st = SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var B: float = sim.c["B"]
+	var prev_l = Vector3.ZERO
+	var prev_r = Vector3.ZERO
+	var prev_c = Color.WHITE
+	for i in n:
+		var a: Vector2 = pts[maxi(0, i - 1)]
+		var b: Vector2 = pts[mini(n - 1, i + 1)]
+		var d = (b - a).normalized()
+		var nrm = Vector2(-d.y, d.x)
+		var age = float(n - 1 - i) / float(n)
+		var w = B * 0.35 + age * B * 1.4
+		var p: Vector2 = pts[i]
+		var y = amp + 0.35
+		var l = Vector3(p.x + nrm.x * w, y, p.y + nrm.y * w)
+		var r = Vector3(p.x - nrm.x * w, y, p.y - nrm.y * w)
+		var c = Color(0.95, 0.98, 1.0, (1.0 - age) * 0.45 * spd)
+		if i > 0:
+			st.set_color(prev_c); st.add_vertex(prev_l)
+			st.set_color(prev_c); st.add_vertex(prev_r)
+			st.set_color(c); st.add_vertex(l)
+			st.set_color(c); st.add_vertex(l)
+			st.set_color(prev_c); st.add_vertex(prev_r)
+			st.set_color(c); st.add_vertex(r)
+		prev_l = l
+		prev_r = r
+		prev_c = c
+	ribbon.mesh = st.commit()
+
+
 func _update_particles(tt: float, amp: float) -> void:
+	_update_ribbon(amp)
 	var spd = sim.speed()
 	var fwd = Vector3(sin(sim.psi), 0, -cos(sim.psi))
 	var L: float = sim.c["L"]
 	var stern = view.position - fwd * L * 0.45
 	stern.y = amp + 0.3
 	wake.global_position = stern
-	wake.emitting = spd > 0.6
+	wake.emitting = spd > 0.6 and not world.simple
 	wake.emission_box_extents = Vector3(sim.c["B"] * 0.3, 0.05, 0.3)
 	wake.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
 	var bow = view.position + fwd * L * 0.46
 	bow.y = amp * 0.6 + 0.5
 	spray.global_position = bow
-	spray.emitting = spd > 1.5
+	spray.emitting = spd > 1.5 and not world.simple
 	spray.initial_velocity_max = 3.0 + spd * 0.8
 
 

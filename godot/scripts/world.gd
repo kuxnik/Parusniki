@@ -15,6 +15,7 @@ var port_lights: Array = []
 var simple_mat: StandardMaterial3D
 var shallows: MeshInstance3D
 var simple := false
+var palms: Array = []
 
 
 func build() -> void:
@@ -132,6 +133,11 @@ func set_simple(on: bool) -> void:
 	pm.subdivide_width = 4 if on else 110
 	pm.subdivide_depth = 4 if on else 110
 	shallows.visible = on
+	for l in port_lights:
+		l.visible = not on
+	lamp.visible = not on
+	for p in palms:
+		p.visible = not on   # MultiMesh на части PowerVR рисуется с артефактами
 
 
 func _island_mesh(isl: Dictionary) -> MeshInstance3D:
@@ -279,10 +285,12 @@ func _build_palms() -> void:
 	tmi.multimesh = trunk_mm
 	tmi.material_override = ShipView.mat(Color("#8A6A44"))
 	add_child(tmi)
+	palms.append(tmi)
 	var lmi = MultiMeshInstance3D.new()
 	lmi.multimesh = leaf_mm
 	lmi.material_override = ShipView.mat(Color("#3F7F3A"))
 	add_child(lmi)
+	palms.append(lmi)
 
 
 ## Небо, солнце, туман по времени суток. t — игровое время.
