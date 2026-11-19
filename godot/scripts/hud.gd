@@ -6,6 +6,9 @@ signal ship_chosen(id: String)
 signal oar_toggled
 signal right_ship
 signal graphics_toggled(simple: bool)
+var dbg_btn = Button.new()
+var dbg_panel = PanelContainer.new()
+var dbg_info = Label.new()
 var gfx_btn = Button.new()
 var simple_gfx := false
 
@@ -99,6 +102,7 @@ func _ready() -> void:
 	toast_lbl.add_theme_constant_override("outline_size", 8)
 	add_child(toast_lbl)
 	_build_menu()
+	_build_debug()
 	_layout_controls()
 
 
@@ -173,6 +177,35 @@ func _place() -> void:
 	right_btn.position = Vector2(vp.x / 2.0 - 80, vp.y - 170)
 	toast_lbl.position = Vector2(vp.x / 2.0 - 300, 16)
 	menu.position = (vp - menu.size) / 2.0
+	dbg_btn.position = Vector2(12 + left, 100 + top)
+	dbg_panel.position = Vector2(12 + left, 156 + top)
+	dbg_btn.visible = not menu.visible
+
+
+func _build_debug() -> void:
+	dbg_btn.text = "🔧"
+	dbg_btn.custom_minimum_size = Vector2(56, 48)
+	dbg_btn.pressed.connect(func(): dbg_panel.visible = not dbg_panel.visible)
+	add_child(dbg_btn)
+	dbg_panel.visible = false
+	dbg_panel.add_theme_stylebox_override("panel", _box(Color(0.05, 0.11, 0.17, 0.92)))
+	add_child(dbg_panel)
+	var vb = VBoxContainer.new()
+	dbg_panel.add_child(vb)
+	var t = Label.new()
+	t.text = "Проверка графики: выключайте по одному"
+	t.add_theme_color_override("font_color", Color("#E0A84A"))
+	vb.add_child(t)
+	for item in [["sky", "Небо (шейдер неба)"], ["water", "Вода"], ["isl", "Острова"], ["ports", "Порты"], ["ship", "Корабль"], ["wake", "След"], ["dyn", "Паруса обновляются каждый кадр"], ["tone", "Тонмаппинг"], ["near", "Камера: ближняя плоскость 0.5 м (выкл = 3 м)"], ["msaa", "Сглаживание MSAA (по умолчанию выкл)"]]:
+		var cb = CheckButton.new()
+		cb.text = item[1]
+		cb.button_pressed = item[0] != "msaa"
+		cb.add_theme_font_size_override("font_size", 16)
+		cb.toggled.connect(main.debug_toggle.bind(item[0]))
+		vb.add_child(cb)
+	dbg_info.add_theme_font_size_override("font_size", 13)
+	dbg_info.modulate = Color("#A9B8C6")
+	vb.add_child(dbg_info)
 
 
 func set_gfx_label() -> void:

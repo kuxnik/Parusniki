@@ -16,6 +16,8 @@ var simple_mat: StandardMaterial3D
 var shallows: MeshInstance3D
 var simple := false
 var palms: Array = []
+var islands_n: Array = []
+var ports_n: Array = []
 
 
 func build() -> void:
@@ -23,9 +25,13 @@ func build() -> void:
 	_build_env()
 	_build_ocean()
 	for isl in GameData.islands:
-		add_child(_island_mesh(isl))
+		var im = _island_mesh(isl)
+		islands_n.append(im)
+		add_child(im)
 	for p in GameData.ports:
-		add_child(_port_mesh(p))
+		var pn = _port_mesh(p)
+		ports_n.append(pn)
+		add_child(pn)
 	_build_palms()
 
 

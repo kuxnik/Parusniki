@@ -30,8 +30,8 @@ func _ready() -> void:
 	cam.look_at(Vector3(0, 0, 500))
 	var layer = CanvasLayer.new()
 	add_child(layer)
-	layer.add_child(hud)
 	hud.main = self
+	layer.add_child(hud)
 	hud.ship_chosen.connect(_start)
 	hud.oar_toggled.connect(_on_oar)
 	hud.right_ship.connect(_on_right)
@@ -53,6 +53,41 @@ func _ready() -> void:
 			game_t = World.DAY_LEN * 0.62
 		_start(args[args.find("--autotest") + 1] if args.size() > args.find("--autotest") + 1 else "bark")
 		hud.menu.visible = false
+
+
+func debug_toggle(on: bool, what: String) -> void:
+	match what:
+		"sky":
+			world.env.background_mode = Environment.BG_SKY if on else Environment.BG_COLOR
+			world.env.background_color = Color("#9EC8DE")
+			world.env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY if on else Environment.AMBIENT_SOURCE_COLOR
+			world.env.ambient_light_color = Color("#B8C8D6")
+		"water":
+			world.ocean.visible = on
+		"isl":
+			for n in world.islands_n:
+				n.visible = on
+		"ports":
+			for n in world.ports_n:
+				n.visible = on
+		"ship":
+			if view:
+				view.visible = on
+		"wake":
+			ribbon.visible = on
+			wake_on = on
+		"dyn":
+			if view:
+				view.dynamic = on
+		"tone":
+			world.env.tonemap_mode = Environment.TONE_MAPPER_FILMIC if on else Environment.TONE_MAPPER_LINEAR
+		"near":
+			cam.near = 0.5 if on else 3.0
+		"msaa":
+			get_viewport().msaa_3d = Viewport.MSAA_2X if on else Viewport.MSAA_DISABLED
+	hud.toast("%s: %s" % [what, "вкл" if on else "выкл"])
+
+var wake_on := true
 
 
 func _on_gfx(simple: bool) -> void:
@@ -269,7 +304,9 @@ func _update_ribbon(amp: float) -> void:
 
 
 func _update_particles(tt: float, amp: float) -> void:
-	_update_ribbon(amp)
+	if wake_on:
+		_update_ribbon(amp)
+	hud.dbg_info.text = "камера y=%.1f  near=%.1f  far=%.0f\n%s" % [cam.position.y, cam.near, cam.far, RenderingServer.get_video_adapter_name()]
 	var spd = sim.speed()
 	var fwd = Vector3(sin(sim.psi), 0, -cos(sim.psi))
 	var L: float = sim.c["L"]

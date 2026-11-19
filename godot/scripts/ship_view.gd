@@ -14,6 +14,7 @@ var L = 10.0
 var B = 3.0
 
 static var _mats = {}
+var dynamic := true   # пересобирать паруса и вымпел каждый кадр
 
 
 static func mat(col: Color, unshaded := false, double := false, alpha := 1.0) -> StandardMaterial3D:
@@ -284,7 +285,7 @@ func update_view(tt: float, amp: float) -> void:
 		piv.scale.y = maxf(0.06, s.sail)
 		var mi: MeshInstance3D = sv["mi"]
 		mi.visible = s.sail > 0.02
-		if not mi.visible:
+		if not mi.visible or (not dynamic and mi.mesh != null):
 			continue
 		var base: PackedVector3Array = sv["base"]
 		var bf: PackedFloat32Array = sv["bf"]
@@ -311,6 +312,8 @@ func update_view(tt: float, amp: float) -> void:
 		mi.mesh = sst.commit()
 	# вымпел по вымпельному ветру
 	pennant_piv.rotation.y = -PI / 2.0 - awa_s * GameData.DEG
+	if not dynamic and pennant.mesh != null:
+		return
 	var fr = 6.0 + press * 10.0
 	var am2 = 0.06 + 0.1 * (1.0 - press * 0.6)
 	var ln = pennant_base[pennant_base.size() - 1].x
